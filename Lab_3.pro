@@ -14,6 +14,7 @@ SOURCES += \
     mainwindow.cpp
 
 HEADERS += \
+    IOCContainer.h \
     mainwindow.h
 
 FORMS += \
