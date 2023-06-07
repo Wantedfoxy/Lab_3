@@ -1,14 +1,4 @@
 #include "MainWindow.h"
-#include <QHBoxLayout>
-#include <QVBoxLayout>
-#include <QFileDialog>
-#include <QChart>
-#include <QChartView>
-#include <QBarSeries>
-#include <QBarSet>
-#include <QPieSeries>
-#include <QPieSlice>
-#include <QList>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -38,6 +28,20 @@ MainWindow::MainWindow(QWidget *parent)
     ChartView = std::make_unique<QChartView>(this);
     ChartView->setMinimumWidth(100);
     ChartView->resize(650,0);
+
+    std::unique_ptr<QLabel> errorLabel = std::make_unique<QLabel>(this);
+    errorLabel->setText("Warning");
+    errorLabel->setAlignment(Qt::AlignCenter);
+    // Устанавливаем ширину QLabel равной ширине ChartView
+    errorLabel->setFixedWidth(ChartView->width());
+    // Создаем QVBoxLayout и добавляем QLabel в него
+    std::unique_ptr<QVBoxLayout> errorLayout = std::make_unique<QVBoxLayout>();
+    errorLayout->addWidget(errorLabel.get());
+    errorLayout->setAlignment(Qt::AlignCenter);
+    // Устанавливаем QVBoxLayout в качестве layout для QChartView
+    ChartView->setLayout(errorLayout.get());
+    errorLabel->setVisible(false);
+
     fileSystemModel = std::make_unique<QFileSystemModel>(this);
     fileSystemModel->setRootPath(QDir::homePath());
     fileSystemModel = std::make_unique<QFileSystemModel>(this);
@@ -54,20 +58,20 @@ MainWindow::MainWindow(QWidget *parent)
     splitter->addWidget(ChartView.get());
     splitter->setHandleWidth(1);
 
-    QHBoxLayout *topLayout = new QHBoxLayout;
+    std::unique_ptr<QHBoxLayout> topLayout = std::make_unique<QHBoxLayout>();
     topLayout->addWidget(openFolderButton.get());
     topLayout->addWidget(chartTypeLabel.get());
     topLayout->addWidget(chartTypeComboBox.get());
     topLayout->addWidget(colorfulCheckbox.get());
     topLayout->addWidget(exportButton.get());
 
-    QVBoxLayout *mainLayout = new QVBoxLayout;
-    mainLayout->addLayout(topLayout);
-    mainLayout->addWidget(splitter.get());
+    std::unique_ptr<QVBoxLayout> mainLayout = std::make_unique<QVBoxLayout>();
+    mainLayout->addLayout(topLayout.release());
+    mainLayout->addWidget(splitter.release());
 
-    QWidget *centralWidget = new QWidget(this);
-    centralWidget->setLayout(mainLayout);
-    setCentralWidget(centralWidget);
+    std::unique_ptr<QWidget> centralWidget = std::make_unique<QWidget>(this);
+    centralWidget->setLayout(mainLayout.release());
+    setCentralWidget(centralWidget.release());
 
     setMinimumSize(800, 600); // Задаем минимальный размер окна
     resize(1024, 768); // Задаем стандартный размер окна
@@ -80,15 +84,30 @@ MainWindow::~MainWindow()
 
 void MainWindow::openFolder()
 {
-    QString folderPath = QFileDialog::getExistingDirectory(this, "Выберите папку", QDir::homePath());
-    if (!folderPath.isEmpty()) {
-        // Установка фильтра на файлы и установка выбранной папки как корневого пути
-        fileSystemModel->setFilter(QDir::NoDotAndDotDot | QDir::Files);
-        fileSystemModel->setRootPath(folderPath);
+   QString folderPath = QFileDialog::getExistingDirectory(this, "Выберите папку", QDir::homePath());
+   QDir folderDir(folderPath);
+   if (folderDir.exists()) {
+        if (!folderDir.isEmpty()) {
+           // Установка фильтра на файлы и установка выбранной папки как корневого пути
+            fileSystemModel->setFilter(QDir::NoDotAndDotDot | QDir::Files);
+            fileSystemModel->setRootPath(folderPath);
 
-        // Установка модели данных для QListView
-        fileTreeView->setModel(fileSystemModel.get());
-        fileTreeView->setRootIndex(fileSystemModel->index(folderPath));
+            // Установка списка допустимых расширений файлов
+            QStringList nameFilters;
+            nameFilters << "*.sqlite" << "*.json" << "*.csv";
+            fileSystemModel->setNameFilters(nameFilters);
+            fileSystemModel->setNameFilterDisables(false);
+
+            // Установка модели данных для QTreeView
+            fileTreeView->setModel(fileSystemModel.get());
+            fileTreeView->setRootIndex(fileSystemModel->index(folderPath));
+        } else {
+            errorLabel->setText("Указанная папка пуста");
+            errorLabel->setVisible(true);
+        }
+    } else {
+        errorLabel->setText("Указанная папка не существует");
+        errorLabel->setVisible(true);
     }
 }
 
@@ -96,28 +115,14 @@ void MainWindow::changeChartType(const QString& type)
 {
     // Определение типа диаграммы на основе выбранного значения в combobox
     if (type == "Столбчатая диаграмма") {
-        // Создание экземпляра класса для столбчатой диаграммы
-        //BarChart* barChart = new BarChart(ChartView);
 
-        // Передача экземпляра DrawChart в ChartView для отображения
-        //ChartView->setDrawChart(barChart);
     } else if (type == "Круговая диаграмма") {
-        // Создание экземпляра класса для круговой диаграммы
-       // PieChart* pieChart = new PieChart(ChartView);
 
-        // Передача экземпляра DrawChart в ChartView для отображения
-       // ChartView->setDrawChart(pieChart);
     } else if (type == "Линейная диаграмма") {
-        // Выбран тип "Линейная диаграмма"
-        // Отрисовка линейной диаграммы
-        //drawLineChart();
+
     } else if (type == "Точечная диаграмма") {
-        // Выбран тип "Точечная диаграмма"
-        // Отрисовка точечной диаграммы
-        //drawScatterChart();
+
     } else if (type == "Гистограмма") {
-        // Выбран тип "Гистограмма"
-        // Отрисовка гистограммы
-        //drawHistogram();
+
     }
 }

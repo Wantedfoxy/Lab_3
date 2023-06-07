@@ -11,6 +11,17 @@
 #include <QSplitter>
 #include <QFileSystemModel>
 #include <QChartView>
+#include <QMessageBox>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+#include <QFileDialog>
+#include <QChart>
+#include <QChartView>
+#include <QBarSeries>
+#include <QBarSet>
+#include <QPieSeries>
+#include <QPieSlice>
+#include <QList>
 
 class MainWindow : public QMainWindow
 {
@@ -27,6 +38,7 @@ public slots:
 private:
     std::unique_ptr<QPushButton> openFolderButton;
     std::unique_ptr<QLabel> chartTypeLabel;
+    std::unique_ptr<QLabel> errorLabel;
     std::unique_ptr<QComboBox> chartTypeComboBox;
     std::unique_ptr<QCheckBox> colorfulCheckbox;
     std::unique_ptr<QPushButton> exportButton;

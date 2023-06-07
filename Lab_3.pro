@@ -14,6 +14,7 @@ SOURCES += \
     mainwindow.cpp
 
 HEADERS += \
+    DataExtractor.h \
     IOCContainer.h \
     mainwindow.h
 
