@@ -2,11 +2,12 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QChartView>
 #include <QPushButton>
 #include <QLabel>
 #include <QComboBox>
 #include <QCheckBox>
-#include <QListView>
+#include <QTreeView>
 #include <QSplitter>
 #include <QFileSystemModel>
 #include <QChartView>
@@ -19,16 +20,20 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+public slots:
+    void openFolder();
+    void changeChartType(const QString&);
+
 private:
-    QPushButton *openFolderButton; // Кнопка для открытия окна выбора папки
-    QLabel *chartTypeLabel; // Надпись "Тип диаграммы:"
-    QComboBox *chartTypeComboBox; // Выпадающий список для выбора типа диаграммы
-    QCheckBox *colorfulCheckbox; // Флажок для выбора цветной диаграммы
-    QPushButton *exportButton; // Кнопка для экспорта диаграммы
-    QListView *fileListView; // Список для отображения файлов
-    QChartView *chartView; // Виджет для отображения диаграммы
-    QFileSystemModel *fileSystemModel; // Модель файловой системы
-    QSplitter *splitter; // Разделитель между списком файлов и диаграммой
+    std::unique_ptr<QPushButton> openFolderButton;
+    std::unique_ptr<QLabel> chartTypeLabel;
+    std::unique_ptr<QComboBox> chartTypeComboBox;
+    std::unique_ptr<QCheckBox> colorfulCheckbox;
+    std::unique_ptr<QPushButton> exportButton;
+    std::unique_ptr<QTreeView> fileTreeView;
+    std::unique_ptr<QChartView> ChartView;
+    std::unique_ptr<QFileSystemModel> fileSystemModel;
+    std::unique_ptr<QSplitter> splitter;
 };
 
 #endif // MAINWINDOW_H
