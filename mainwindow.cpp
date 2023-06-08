@@ -7,11 +7,6 @@ MainWindow::MainWindow(QWidget *parent)
 {
     // Создание экземпляра IOCContainer
     IOCContainer container;
-    // Регистрируем зависимости
-    container.RegisterInstance<ChartRenderer, BarChartRenderer>();
-    container.RegisterInstance<ChartRenderer, PieChartRenderer>();
-    container.RegisterInstance<ChartRenderer, LineChartRenderer>();
-    container.RegisterInstance<ChartRenderer, HistogramChartRenderer>();
     // Создаем кнопку "Открыть папку"
     openFolderButton = std::make_unique<QPushButton>("Открыть папку", this);
     openFolderButton->setStyleSheet("border: 1px solid black; border-radius: 5px; padding: 5px;");
@@ -135,6 +130,7 @@ void MainWindow::openFolder()
 
 void MainWindow::handleFileSelectionChanged(const QItemSelection &selected, const QItemSelection &deselected)
 {
+    Q_UNUSED(deselected);
 
     QModelIndex index = fileListView->selectionModel()->currentIndex();
     // Получение пути к выбранному файлу
@@ -196,25 +192,25 @@ void MainWindow::changeChartType(const QString& type)
 {
     // Определение типа диаграммы на основе выбранного значения в combobox
     if (type == "Столбчатая диаграмма") {
-    //qDebug() << "Rendering Bar Chart";
-    chartRenderer = std::make_unique<BarChartRenderer>();
-    //chartRenderer = container.GetObject<BarChartRenderer>().get();
+    container.RegisterFactory<ChartRenderer, BarChartRenderer>();
+    chartRenderer = container.GetObject<ChartRenderer>();
     } else if (type == "Круговая диаграмма") {
-    //qDebug() << "Rendering Pie Chart";
-    chartRenderer = std::make_unique<PieChartRenderer>();
-        //chartRenderer = container.GetObject<PieChartRenderer>().get();
+    container.RegisterFactory<ChartRenderer, PieChartRenderer>();
+    chartRenderer = container.GetObject<ChartRenderer>();
     } else if (type == "Линейная диаграмма") {
-    //qDebug() << "Rendering Line Chart";
-    chartRenderer = std::make_unique<LineChartRenderer>();
-        //chartRenderer = container.GetObject<LineChartRenderer>().get();
+    container.RegisterFactory<ChartRenderer, LineChartRenderer>();
+    chartRenderer = container.GetObject<ChartRenderer>();
     } else if (type == "Гистограмма") {
-    //qDebug() << "Rendering Histogram Chart";
-    chartRenderer = std::make_unique<HistogramChartRenderer>();
-        //chartRenderer = container.GetObject<HistogramChartRenderer>().get();
+    container.RegisterFactory<ChartRenderer, HistogramChartRenderer>();
+    chartRenderer = container.GetObject<ChartRenderer>();
     }
 
+    if (chartRenderer) {
     chartRenderer->renderChart();
-
+    } else {
+    // Обработка ошибки: не удалось получить объект ChartRenderer из контейнера
+    emit errorMessageReceived("Ошибка: невозможно создать объект диаграммы");
+    }
 }
 
 void MainWindow::printErrorLabel(QString text)

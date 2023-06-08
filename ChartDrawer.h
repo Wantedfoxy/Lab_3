@@ -57,25 +57,4 @@ public:
     }
 };
 
-// Класс ChartDrawer
-class ChartDrawer
-{
-private:
-    std::shared_ptr<ChartRenderer> chartRenderer;
-
-public:
-    ChartDrawer()
-    {
-
-
-
-    }
-
-    void drawChart()
-    {
-        // Вызов метода отрисовки диаграммы через ChartRenderer
-        chartRenderer->renderChart();
-    }
-};
-
 #endif // CHARTDRAWER_H

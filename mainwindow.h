@@ -52,7 +52,7 @@ private:
     QItemSelectionModel* ListSelectionModel;             // Модель работы с выбранным файлом
     std::unique_ptr<QSplitter> splitter;                 // Разделитель между QListView и QChartView
     IOCContainer container;                              // Контейнер для выбора типа диаграммы
-    std::unique_ptr<ChartRenderer> chartRenderer;
+    std::shared_ptr<ChartRenderer> chartRenderer;
 };
 
 #endif // MAINWINDOW_H
