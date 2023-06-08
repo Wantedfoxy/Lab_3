@@ -1,5 +1,4 @@
 #include "MainWindow.h"
-#include "DataExtractor.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -30,28 +29,17 @@ MainWindow::MainWindow(QWidget *parent)
     exportButton = std::make_unique<QPushButton>("Экспорт", this);
     exportButton->setStyleSheet("border: 1px solid black; border-radius: 5px; padding: 5px;");
 
-    // Создаем представление файлов в виде дерева
+    // Создаем представление файлов в виде списка (QListView)
     fileListView = std::make_unique<QListView>(this);
     fileListView->setMinimumWidth(100);
     fileListView->resize(350,0);
+    fileListView->setStyleSheet("border: 1px solid black; border-radius: 5px; padding: 5px;");
 
     // Создаем виджет для отображения диаграммы
-    ChartView = std::make_unique<QChartView>(this);
-    ChartView->setMinimumWidth(100);
-    ChartView->resize(674,0);
-
-    // Создаем QLabel для отображения ошибок
-    errorLabel = std::make_unique<QLabel>(this);
-    errorLabel->setText("");
-    errorLabel->setAlignment(Qt::AlignCenter);
-    // Устанавливаем ширину QLabel равной ширине ChartView
-    errorLabel->setFixedWidth(ChartView->width());
-    // Создаем QVBoxLayout и добавляем QLabel в него
-    std::unique_ptr<QVBoxLayout> errorLayout = std::make_unique<QVBoxLayout>();
-    errorLayout->addWidget(errorLabel.get());
-    errorLayout->setAlignment(Qt::AlignCenter);
-    // Устанавливаем QVBoxLayout в качестве layout для QChartView
-    ChartView->setLayout(errorLayout.get());
+    chartViewWidget = std::make_unique<QWidget>(this);
+    chartViewWidget->setMinimumWidth(100);
+    chartViewWidget->resize(674, 0);
+    chartViewWidget->setStyleSheet("border: 1px solid black; border-radius: 5px; padding: 5px;");
 
     // Создаем модель файловой системы для QListView
     fileSystemModel = std::make_unique<QFileSystemModel>(this);
@@ -62,7 +50,7 @@ MainWindow::MainWindow(QWidget *parent)
     splitter = std::make_unique<QSplitter>(Qt::Horizontal, this);
     splitter->setChildrenCollapsible(false);
     splitter->addWidget(fileListView.get());
-    splitter->addWidget(ChartView.get());
+    splitter->addWidget(chartViewWidget.get());
     splitter->setHandleWidth(1);
 
     // Создаем QHBoxLayout и добавляем элементы управления
@@ -91,6 +79,8 @@ MainWindow::MainWindow(QWidget *parent)
 
    // Устанавливаем соединение между сигналом clicked кнопки openFolderButton и слотом openFolder()
    connect(openFolderButton.get(), &QPushButton::clicked, this, &MainWindow::openFolder);
+
+   connect(this, SIGNAL(errorMessageReceived(QString)), this, SLOT(printErrorLabel(QString)));
 }
 
 MainWindow::~MainWindow()
@@ -126,13 +116,10 @@ void MainWindow::openFolder()
             connect(ListSelectionModel, &QItemSelectionModel::selectionChanged, this, &MainWindow::handleFileSelectionChanged);
         } else {
             // Если указанная папка пуста, отображаем предупреждение
-            errorLabel->setText("Указанная папка пуста");
-            errorLabel->setVisible(true);
+            emit errorMessageReceived("Указанная папка пуста");
         }
     } else {
-        // Если указанная папка не существует, отображаем предупреждение
-        errorLabel->setText("Указанная папка не существует");
-        errorLabel->setVisible(true);
+        emit errorMessageReceived("Указанная папка не существует");
     }
 }
 
@@ -163,29 +150,26 @@ void MainWindow::handleFileSelectionChanged(const QItemSelection &selected, cons
     if (fileExtension == "sqlite")
     {
         dataExtractor = std::make_unique<SqlDataExtractor>();
-        errorLabel->setText("Выбран SQL-файл: " + filePath);
+            emit errorMessageReceived("Выбран SQL-файл: " + filePath);
     }
     else if (fileExtension == "json")
     {
         dataExtractor = std::make_unique<JsonDataExtractor>();
-        errorLabel->setText("Выбран JSON-файл: " + filePath);
+        emit errorMessageReceived("Выбран JSON-файл: " + filePath);
     }
     else if (fileExtension == "csv")
     {
         dataExtractor = std::make_unique<CsvDataExtractor>();
-        errorLabel->setText("Выбран CSV-файл: " + filePath);
+        emit errorMessageReceived("Выбран CSV-файл: " + filePath);
     }
     else
     {
         dataExtractor = nullptr; // Если тип файла неизвестен или не поддерживается
-        errorLabel->setText("Неподдерживаемый тип файла");
+        emit errorMessageReceived("Неподдерживаемый тип файла");
     }
 
-    // Вывод информации в errorLabel
-    errorLabel->setVisible(true);
-
     // Извлечение данных с использованием DataExtractor
-    if (dataExtractor->checkFile(filePath, errorLabel.get()))
+    if (dataExtractor->checkFile(filePath))
     {
         QMap<QString, QString> extractedData = dataExtractor->extractData(filePath);
         // Обработка извлеченных данных
@@ -208,4 +192,22 @@ void MainWindow::changeChartType(const QString& type)
     } else if (type == "Гистограмма") {
         // Обработка для гистограммы
     }
+}
+
+void MainWindow::printErrorLabel(QString text)
+{
+    if (!errorLabel)
+    {
+    errorLabel = std::make_unique<QLabel>(this);
+    errorLabel->setAlignment(Qt::AlignHCenter | Qt::AlignCenter);
+    // Создаем умный указатель на QVBoxLayout и выделяем память для него
+    std::unique_ptr<QVBoxLayout> layout = std::make_unique<QVBoxLayout>();
+    // Добавляем errorLabel в макет
+    layout->addWidget(errorLabel.get());
+    // Устанавливаем макет для chartViewWidget
+    chartViewWidget->setLayout(layout.release());
+    }
+
+    // Обновляем текст errorLabel
+    errorLabel->setText(text);
 }

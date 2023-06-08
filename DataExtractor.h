@@ -16,7 +16,7 @@ class AbstractDataExtractor
 public:
     virtual ~AbstractDataExtractor() {}
     virtual QMap<QString, QString> extractData(const QString& filePath) = 0;
-    virtual bool checkFile(const QString &filePath, QLabel* errorLabe) = 0;
+    virtual bool checkFile(const QString &filePath) = 0;
 
 };
 
@@ -24,7 +24,7 @@ public:
 class SqlDataExtractor : public AbstractDataExtractor
 {
 public:
-    bool checkFile(const QString& filePath, QLabel* errorLabel)
+    bool checkFile(const QString& filePath)
     {
         // Create a QSqlDatabase object
         QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
@@ -35,7 +35,7 @@ public:
         // Attempt to open the database
         if (!db.open()) {
             QString errorMessage = "Ошибка открытия базы данных: " + db.lastError().text();
-            errorLabel->setText(errorMessage);
+            //errorLabel->setText(errorMessage);
             return false;
         }
 
@@ -43,7 +43,7 @@ public:
         QStringList tables = db.tables();
         if (tables.isEmpty()) {
             QString errorMessage = "База данных пуста: " + filePath;
-            errorLabel->setText(errorMessage);
+            //errorLabel->setText(errorMessage);
             db.close();
             return false;
         }
@@ -95,7 +95,7 @@ public:
 class JsonDataExtractor : public AbstractDataExtractor
 {
 public:
-    bool checkFile(const QString& filePath, QLabel* errorLabel)
+    bool checkFile(const QString& filePath)
     {
         // Create a QSqlDatabase object
         QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
@@ -106,7 +106,7 @@ public:
         // Attempt to open the database
         if (!db.open()) {
             QString errorMessage = "Ошибка открытия базы данных: " + db.lastError().text();
-                                   errorLabel->setText(errorMessage);
+                                   //errorLabel->setText(errorMessage);
             return false;
         }
 
@@ -114,7 +114,7 @@ public:
         QStringList tables = db.tables();
         if (tables.isEmpty()) {
             QString errorMessage = "База данных пуста: " + filePath;
-            errorLabel->setText(errorMessage);
+            //errorLabel->setText(errorMessage);
             db.close();
             return false;
         }
@@ -165,7 +165,7 @@ public:
 class CsvDataExtractor : public AbstractDataExtractor
 {
 public:
-    bool checkFile(const QString& filePath, QLabel* errorLabel)
+    bool checkFile(const QString& filePath)
     {
         // Create a QSqlDatabase object
         QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
@@ -176,7 +176,7 @@ public:
         // Attempt to open the database
         if (!db.open()) {
             QString errorMessage = "Ошибка открытия базы данных: " + db.lastError().text();
-                                   errorLabel->setText(errorMessage);
+                                   //errorLabel->setText(errorMessage);
             return false;
         }
 
@@ -184,7 +184,7 @@ public:
         QStringList tables = db.tables();
         if (tables.isEmpty()) {
             QString errorMessage = "База данных пуста: " + filePath;
-            errorLabel->setText(errorMessage);
+            //errorLabel->setText(errorMessage);
             db.close();
             return false;
         }

@@ -32,10 +32,14 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+signals:
+    void errorMessageReceived(QString text);
+
 public slots:
     void openFolder();                        // Слот для открытия папки
     void handleFileSelectionChanged(const QItemSelection&, const QItemSelection&); // Слот для отслеживания изменения выбранного файла
     void changeChartType(const QString&);      // Слот для изменения типа диаграммы
+    void printErrorLabel(QString); // Слот для вывода сообщения с ошибкой
 
 private:
     std::unique_ptr<QPushButton> openFolderButton;       // Кнопка "Открыть папку"
@@ -45,7 +49,7 @@ private:
     std::unique_ptr<QCheckBox> colorfulCheckbox;         // Флажок для выбора цветной диаграммы
     std::unique_ptr<QPushButton> exportButton;           // Кнопка "Экспорт"
     std::unique_ptr<QListView> fileListView;             // Представление файлов в виде дерева
-    std::unique_ptr<QChartView> ChartView;               // Виджет для отображения диаграммы
+    std::unique_ptr<QWidget> chartViewWidget;               // Виджет для отображения диаграммы
     std::unique_ptr<QFileSystemModel> fileSystemModel;   // Модель файловой системы для QListView
     std::unique_ptr<AbstractDataExtractor> dataExtractor;// Объект, с помощью которого реализуется
                                                          // паттерн стратегия
