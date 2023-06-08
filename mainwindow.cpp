@@ -1,8 +1,17 @@
 #include "MainWindow.h"
 
+int IOCContainer::s_nextTypeId = 1;
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
+    // Создание экземпляра IOCContainer
+    IOCContainer container;
+    // Регистрируем зависимости
+    container.RegisterInstance<ChartRenderer, BarChartRenderer>();
+    container.RegisterInstance<ChartRenderer, PieChartRenderer>();
+    container.RegisterInstance<ChartRenderer, LineChartRenderer>();
+    container.RegisterInstance<ChartRenderer, HistogramChartRenderer>();
     // Создаем кнопку "Открыть папку"
     openFolderButton = std::make_unique<QPushButton>("Открыть папку", this);
     openFolderButton->setStyleSheet("border: 1px solid black; border-radius: 5px; padding: 5px;");
@@ -17,8 +26,7 @@ MainWindow::MainWindow(QWidget *parent)
     chartTypeComboBox->addItem("Столбчатая диаграмма");
     chartTypeComboBox->addItem("Круговая диаграмма");
     chartTypeComboBox->addItem("Линейная диаграмма");
-    chartTypeComboBox->addItem("Точечная диаграмма");
-    chartTypeComboBox->addItem("Гистограмма ");
+    chartTypeComboBox->addItem("Гистограмма");
     chartTypeComboBox->setStyleSheet("border: 1px solid black; border-radius: 5px; padding: 5px;");
 
     // Создаем флажок для выбора черно-белой диаграммы
@@ -81,6 +89,8 @@ MainWindow::MainWindow(QWidget *parent)
    connect(openFolderButton.get(), &QPushButton::clicked, this, &MainWindow::openFolder);
 
    connect(this, SIGNAL(errorMessageReceived(QString)), this, SLOT(printErrorLabel(QString)));
+
+   connect(chartTypeComboBox.get(), SIGNAL(currentTextChanged(const QString&)), this, SLOT(changeChartType(const QString&)));
 }
 
 MainWindow::~MainWindow()
@@ -186,16 +196,25 @@ void MainWindow::changeChartType(const QString& type)
 {
     // Определение типа диаграммы на основе выбранного значения в combobox
     if (type == "Столбчатая диаграмма") {
-        // Обработка для столбчатой диаграммы
+    //qDebug() << "Rendering Bar Chart";
+    chartRenderer = std::make_unique<BarChartRenderer>();
+    //chartRenderer = container.GetObject<BarChartRenderer>().get();
     } else if (type == "Круговая диаграмма") {
-        // Обработка для круговой диаграммы
+    //qDebug() << "Rendering Pie Chart";
+    chartRenderer = std::make_unique<PieChartRenderer>();
+        //chartRenderer = container.GetObject<PieChartRenderer>().get();
     } else if (type == "Линейная диаграмма") {
-        // Обработка для линейной диаграммы
-    } else if (type == "Точечная диаграмма") {
-        // Обработка для точечной диаграммы
+    //qDebug() << "Rendering Line Chart";
+    chartRenderer = std::make_unique<LineChartRenderer>();
+        //chartRenderer = container.GetObject<LineChartRenderer>().get();
     } else if (type == "Гистограмма") {
-        // Обработка для гистограммы
+    //qDebug() << "Rendering Histogram Chart";
+    chartRenderer = std::make_unique<HistogramChartRenderer>();
+        //chartRenderer = container.GetObject<HistogramChartRenderer>().get();
     }
+
+    chartRenderer->renderChart();
+
 }
 
 void MainWindow::printErrorLabel(QString text)

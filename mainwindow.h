@@ -1,7 +1,9 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "IOCContainer.h"
 #include "DataExtractor.h"
+#include "ChartDrawer.h"
 #include <QMainWindow>
 #include <QPushButton>
 #include <QLabel>
@@ -49,6 +51,8 @@ private:
                                                          // паттерн стратегия
     QItemSelectionModel* ListSelectionModel;             // Модель работы с выбранным файлом
     std::unique_ptr<QSplitter> splitter;                 // Разделитель между QListView и QChartView
+    IOCContainer container;                              // Контейнер для выбора типа диаграммы
+    std::unique_ptr<ChartRenderer> chartRenderer;
 };
 
 #endif // MAINWINDOW_H
