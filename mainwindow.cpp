@@ -183,6 +183,10 @@ void MainWindow::handleFileSelectionChanged(const QItemSelection &selected, cons
         for (const QPair<QString, QString>& pair : extractedData) {
             qDebug() << pair.first << ":" << pair.second;
         }
+
+        // Вызов слота changeChartType с передачей типа диаграммы
+        QString selectedChartType = chartTypeComboBox->currentText();
+        changeChartType(selectedChartType);
     } else
         emit errorMessageReceived("Произошла ошибка при проверке файла");
     }
