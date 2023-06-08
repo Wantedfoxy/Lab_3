@@ -171,10 +171,14 @@ void MainWindow::handleFileSelectionChanged(const QItemSelection &selected, cons
     // Извлечение данных с использованием DataExtractor
     if (dataExtractor->checkFile(filePath))
     {
-        QMap<QString, QString> extractedData = dataExtractor->extractData(filePath);
+        QList<QPair<QString, QString>> extractedData = dataExtractor->extractData(filePath);
         // Обработка извлеченных данных
-    }
-
+        qDebug() << "Extracted Data:";
+        for (const QPair<QString, QString>& pair : extractedData) {
+            qDebug() << pair.first << ":" << pair.second;
+        }
+    } else
+        emit errorMessageReceived("Произошла ошибка при проверке файла");
     }
 }
 
