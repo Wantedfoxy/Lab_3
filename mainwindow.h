@@ -3,7 +3,6 @@
 
 #include "DataExtractor.h"
 #include <QMainWindow>
-#include <QChartView>
 #include <QPushButton>
 #include <QLabel>
 #include <QComboBox>
@@ -17,11 +16,6 @@
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QFileDialog>
-#include <QChartView>
-#include <QBarSeries>
-#include <QBarSet>
-#include <QPieSeries>
-#include <QPieSlice>
 #include <QList>
 
 class MainWindow : public QMainWindow

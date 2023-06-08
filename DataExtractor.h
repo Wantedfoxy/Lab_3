@@ -1,7 +1,6 @@
 #ifndef DATAEXTRACTOR_H
 #define DATAEXTRACTOR_H
 
-#include <QLabel>
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QSqlRecord>
