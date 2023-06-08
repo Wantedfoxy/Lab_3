@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "DataExtractor.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -30,22 +31,18 @@ MainWindow::MainWindow(QWidget *parent)
     exportButton->setStyleSheet("border: 1px solid black; border-radius: 5px; padding: 5px;");
 
     // Создаем представление файлов в виде дерева
-    fileTreeView = std::make_unique<QTreeView>(this);
-    fileTreeView->setMinimumWidth(100);
-    fileTreeView->resize(424,0);
-    fileTreeView->setColumnWidth(0, 142);
-    fileTreeView->setColumnWidth(1, 141);
-    fileTreeView->setColumnWidth(2, 141);
-    fileTreeView->setColumnHidden(3, true);
+    fileListView = std::make_unique<QListView>(this);
+    fileListView->setMinimumWidth(100);
+    fileListView->resize(350,0);
 
     // Создаем виджет для отображения диаграммы
     ChartView = std::make_unique<QChartView>(this);
     ChartView->setMinimumWidth(100);
-    ChartView->resize(650,0);
+    ChartView->resize(674,0);
 
     // Создаем QLabel для отображения ошибок
-    std::unique_ptr<QLabel> errorLabel = std::make_unique<QLabel>(this);
-    errorLabel->setText("Warning");
+    errorLabel = std::make_unique<QLabel>(this);
+    errorLabel->setText("");
     errorLabel->setAlignment(Qt::AlignCenter);
     // Устанавливаем ширину QLabel равной ширине ChartView
     errorLabel->setFixedWidth(ChartView->width());
@@ -55,17 +52,16 @@ MainWindow::MainWindow(QWidget *parent)
     errorLayout->setAlignment(Qt::AlignCenter);
     // Устанавливаем QVBoxLayout в качестве layout для QChartView
     ChartView->setLayout(errorLayout.get());
-    errorLabel->setVisible(false);
 
-    // Создаем модель файловой системы для QTreeView
+    // Создаем модель файловой системы для QListView
     fileSystemModel = std::make_unique<QFileSystemModel>(this);
     fileSystemModel->setRootPath(QDir::homePath());
     fileSystemModel = std::make_unique<QFileSystemModel>(this);
 
-    // Создаем разделитель между QTreeView и QChartView
+    // Создаем разделитель между QListView и QChartView
     splitter = std::make_unique<QSplitter>(Qt::Horizontal, this);
     splitter->setChildrenCollapsible(false);
-    splitter->addWidget(fileTreeView.get());
+    splitter->addWidget(fileListView.get());
     splitter->addWidget(ChartView.get());
     splitter->setHandleWidth(1);
 
@@ -91,6 +87,7 @@ MainWindow::MainWindow(QWidget *parent)
     setMinimumSize(800, 600);
     // Задаем стандартный размер окна
     resize(1024, 768);
+
 
    // Устанавливаем соединение между сигналом clicked кнопки openFolderButton и слотом openFolder()
    connect(openFolderButton.get(), &QPushButton::clicked, this, &MainWindow::openFolder);
@@ -119,10 +116,14 @@ void MainWindow::openFolder()
             fileSystemModel->setNameFilters(nameFilters);
             fileSystemModel->setNameFilterDisables(false);
 
-            // Установка модели данных для QTreeView и устанавливаем корневой индекс на выбранную
+            // Установка модели данных для QListView и устанавливаем корневой индекс на выбранную
             // папку
-            fileTreeView->setModel(fileSystemModel.get());
-            fileTreeView->setRootIndex(fileSystemModel->index(folderPath));
+            fileListView->setModel(fileSystemModel.get());
+            fileListView->setRootIndex(fileSystemModel->index(folderPath));
+
+            // Создаем QItemSelectionModel и соединяем его сигнал со слотом handleFileSelectionChanged
+            ListSelectionModel = fileListView->selectionModel();
+            connect(ListSelectionModel, &QItemSelectionModel::selectionChanged, this, &MainWindow::handleFileSelectionChanged);
         } else {
             // Если указанная папка пуста, отображаем предупреждение
             errorLabel->setText("Указанная папка пуста");
@@ -132,6 +133,64 @@ void MainWindow::openFolder()
         // Если указанная папка не существует, отображаем предупреждение
         errorLabel->setText("Указанная папка не существует");
         errorLabel->setVisible(true);
+    }
+}
+
+void MainWindow::handleFileSelectionChanged(const QItemSelection &selected, const QItemSelection &deselected)
+{
+
+    QModelIndex index = fileListView->selectionModel()->currentIndex();
+    // Получение пути к выбранному файлу
+    QString filePath = fileSystemModel->filePath(index);
+
+    // Определение типа файла на основе расширения
+    QString fileExtension = QFileInfo(filePath).suffix();
+
+    // Проверяем, есть ли выбранные элементы в QTreeView
+    if (!selected.isEmpty())
+    {
+        // Получаем индекс выбранного элемента
+        QModelIndex selectedIndex = selected.indexes().first();
+
+        // Получаем путь к выбранному файлу
+        QString filePath = fileSystemModel->filePath(selectedIndex);
+
+        // Проверяем тип файла и выполняем соответствующую обработку
+        QFileInfo fileInfo(filePath);
+        QString fileExtension = fileInfo.suffix();
+
+    // Создание соответствующего экземпляра DataExtractor в зависимости от типа файла
+    if (fileExtension == "sqlite")
+    {
+        dataExtractor = std::make_unique<SqlDataExtractor>();
+        errorLabel->setText("Выбран SQL-файл: " + filePath);
+    }
+    else if (fileExtension == "json")
+    {
+        dataExtractor = std::make_unique<JsonDataExtractor>();
+        errorLabel->setText("Выбран JSON-файл: " + filePath);
+    }
+    else if (fileExtension == "csv")
+    {
+        dataExtractor = std::make_unique<CsvDataExtractor>();
+        errorLabel->setText("Выбран CSV-файл: " + filePath);
+    }
+    else
+    {
+        dataExtractor = nullptr; // Если тип файла неизвестен или не поддерживается
+        errorLabel->setText("Неподдерживаемый тип файла");
+    }
+
+    // Вывод информации в errorLabel
+    errorLabel->setVisible(true);
+
+    // Извлечение данных с использованием DataExtractor
+    if (dataExtractor->checkFile(filePath, errorLabel.get()))
+    {
+        QMap<QString, QString> extractedData = dataExtractor->extractData(filePath);
+        // Обработка извлеченных данных
+    }
+
     }
 }
 

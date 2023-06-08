@@ -1,13 +1,15 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "DataExtractor.h"
 #include <QMainWindow>
 #include <QChartView>
 #include <QPushButton>
 #include <QLabel>
 #include <QComboBox>
 #include <QCheckBox>
-#include <QTreeView>
+#include <QListView>
+#include <QItemSelectionModel>
 #include <QSplitter>
 #include <QFileSystemModel>
 #include <QChartView>
@@ -32,6 +34,7 @@ public:
 
 public slots:
     void openFolder();                        // Слот для открытия папки
+    void handleFileSelectionChanged(const QItemSelection&, const QItemSelection&); // Слот для отслеживания изменения выбранного файла
     void changeChartType(const QString&);      // Слот для изменения типа диаграммы
 
 private:
@@ -41,10 +44,13 @@ private:
     std::unique_ptr<QComboBox> chartTypeComboBox;        // Выпадающий список с типами диаграмм
     std::unique_ptr<QCheckBox> colorfulCheckbox;         // Флажок для выбора цветной диаграммы
     std::unique_ptr<QPushButton> exportButton;           // Кнопка "Экспорт"
-    std::unique_ptr<QTreeView> fileTreeView;             // Представление файлов в виде дерева
+    std::unique_ptr<QListView> fileListView;             // Представление файлов в виде дерева
     std::unique_ptr<QChartView> ChartView;               // Виджет для отображения диаграммы
-    std::unique_ptr<QFileSystemModel> fileSystemModel;   // Модель файловой системы для QTreeView
-    std::unique_ptr<QSplitter> splitter;                 // Разделитель между QTreeView и QChartView
+    std::unique_ptr<QFileSystemModel> fileSystemModel;   // Модель файловой системы для QListView
+    std::unique_ptr<AbstractDataExtractor> dataExtractor;// Объект, с помощью которого реализуется
+                                                         // паттерн стратегия
+    QItemSelectionModel* ListSelectionModel;             // Модель работы с выбранным файлом
+    std::unique_ptr<QSplitter> splitter;                 // Разделитель между QListView и QChartView
 };
 
 #endif // MAINWINDOW_H
