@@ -5,8 +5,8 @@ int IOCContainer::s_nextTypeId = 1;
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    // Создание экземпляра IOCContainer
-    IOCContainer container;
+    // Инициализируем строковую переменную NULL, эта переменная следит, есть ли выбранный файл;
+    selectedFilePath = NULL;
     // Создаем кнопку "Открыть папку"
     openFolderButton = std::make_unique<QPushButton>("Открыть папку", this);
     openFolderButton->setStyleSheet("border: 1px solid black; border-radius: 5px; padding: 5px;");
@@ -93,6 +93,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::openFolder()
 {
+   selectedFilePath = NULL;
    // Открываем диалоговое окно выбора папки
    QString folderPath = QFileDialog::getExistingDirectory(this, "Выберите папку", QDir::homePath());
     // Создание объекта QDir с указанным путем folderPath, который представляет директорию,
@@ -134,10 +135,10 @@ void MainWindow::handleFileSelectionChanged(const QItemSelection &selected, cons
 
     QModelIndex index = fileListView->selectionModel()->currentIndex();
     // Получение пути к выбранному файлу
-    QString filePath = fileSystemModel->filePath(index);
+    selectedFilePath = fileSystemModel->filePath(index);
 
     // Определение типа файла на основе расширения
-    QString fileExtension = QFileInfo(filePath).suffix();
+    QString fileExtension = QFileInfo(selectedFilePath).suffix();
 
     // Проверяем, есть ли выбранные элементы в QTreeView
     if (!selected.isEmpty())
@@ -146,27 +147,27 @@ void MainWindow::handleFileSelectionChanged(const QItemSelection &selected, cons
         QModelIndex selectedIndex = selected.indexes().first();
 
         // Получаем путь к выбранному файлу
-        QString filePath = fileSystemModel->filePath(selectedIndex);
+        selectedFilePath = fileSystemModel->filePath(selectedIndex);
 
         // Проверяем тип файла и выполняем соответствующую обработку
-        QFileInfo fileInfo(filePath);
+        QFileInfo fileInfo(selectedFilePath);
         QString fileExtension = fileInfo.suffix();
 
     // Создание соответствующего экземпляра DataExtractor в зависимости от типа файла
     if (fileExtension == "sqlite")
     {
         dataExtractor = std::make_unique<SqlDataExtractor>();
-            emit errorMessageReceived("Выбран SQL-файл: " + filePath);
+            emit errorMessageReceived("Выбран SQL-файл: " + selectedFilePath);
     }
     else if (fileExtension == "json")
     {
         dataExtractor = std::make_unique<JsonDataExtractor>();
-        emit errorMessageReceived("Выбран JSON-файл: " + filePath);
+        emit errorMessageReceived("Выбран JSON-файл: " + selectedFilePath);
     }
     else if (fileExtension == "csv")
     {
         dataExtractor = std::make_unique<CsvDataExtractor>();
-        emit errorMessageReceived("Выбран CSV-файл: " + filePath);
+        emit errorMessageReceived("Выбран CSV-файл: " + selectedFilePath);
     }
     else
     {
@@ -175,9 +176,9 @@ void MainWindow::handleFileSelectionChanged(const QItemSelection &selected, cons
     }
 
     // Извлечение данных с использованием DataExtractor
-    if (dataExtractor->checkFile(filePath))
+    if (dataExtractor->checkFile(selectedFilePath))
     {
-        QList<QPair<QString, QString>> extractedData = dataExtractor->extractData(filePath);
+        extractedData = dataExtractor->extractData(selectedFilePath);
         // Обработка извлеченных данных
         qDebug() << "Extracted Data:";
         for (const QPair<QString, QString>& pair : extractedData) {
@@ -194,6 +195,18 @@ void MainWindow::handleFileSelectionChanged(const QItemSelection &selected, cons
 
 void MainWindow::changeChartType(const QString& type)
 {
+
+
+    // Реализовать очистку QWidget и создание QChartView, а затем передавать QChartView и
+    // extracted Data в метод renderChart
+
+    // Проверяем, был ли выбран файл
+    if (selectedFilePath.isEmpty()) {
+    qDebug() << selectedFilePath;
+    // Если файл не выбран, не выполняем никаких действий
+    return;
+    }
+    qDebug() << "На отрисовку";
     // Определение типа диаграммы на основе выбранного значения в combobox
     if (type == "Столбчатая диаграмма") {
     container.RegisterFactory<ChartRenderer, BarChartRenderer>();
@@ -210,7 +223,25 @@ void MainWindow::changeChartType(const QString& type)
     }
 
     if (chartRenderer) {
-    chartRenderer->renderChart();
+    // Удаление errorLabel из макета
+    QLayout* layout = chartViewWidget->layout();
+    if (layout) {
+        layout->removeWidget(errorLabel.get());
+    }
+
+    // Удаление errorLabel и освобождение памяти
+    delete errorLabel.release();
+
+    // Создание и настройка QChartView
+    std::shared_ptr<QChartView> chartView = std::make_shared<QChartView>();
+    chartView->setRenderHint(QPainter::Antialiasing);
+    chartView->chart()->setTitle("График");
+
+    // Добавление chartView в макет
+    layout->addWidget(chartView.get());
+    chartViewWidget->setLayout(layout);
+
+    chartRenderer->renderChart(extractedData, chartView);
     } else {
     // Обработка ошибки: не удалось получить объект ChartRenderer из контейнера
     emit errorMessageReceived("Ошибка: невозможно создать объект диаграммы");

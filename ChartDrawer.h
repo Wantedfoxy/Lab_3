@@ -1,6 +1,7 @@
 #ifndef CHARTDRAWER_H
 #define CHARTDRAWER_H
 
+#include <QChartView>
 #include <memory>
 #include <string>
 #include <QDebug>
@@ -10,14 +11,14 @@ class ChartRenderer
 {
 public:
     virtual ~ChartRenderer() {}
-    virtual void renderChart() = 0;
+    virtual void renderChart(QList<QPair<QString, QString>> extractedData, std::shared_ptr<QChartView> chartView) = 0;
 };
 
 // Конкретный класс для отрисовки круговой диаграммы
 class PieChartRenderer : public ChartRenderer
 {
 public:
-    void renderChart() override
+    void renderChart(QList<QPair<QString, QString>> extractedData, std::shared_ptr<QChartView> chartView) override
     {
         // Реализация отрисовки круговой диаграммы
         qDebug() << "Rendering Pie Chart";
@@ -28,7 +29,7 @@ public:
 class BarChartRenderer : public ChartRenderer
 {
 public:
-    void renderChart() override
+    void renderChart(QList<QPair<QString, QString>> extractedData, std::shared_ptr<QChartView> chartView) override
     {
         // Реализация отрисовки столбчатой диаграммы
         qDebug() << "Rendering Bar Chart";
@@ -39,7 +40,7 @@ public:
 class LineChartRenderer : public ChartRenderer
 {
 public:
-    void renderChart() override
+    void renderChart(QList<QPair<QString, QString>> extractedData, std::shared_ptr<QChartView> chartView) override
     {
         // Реализация отрисовки столбчатой диаграммы
         qDebug() << "Rendering Line Chart";
@@ -50,7 +51,7 @@ public:
 class HistogramChartRenderer : public ChartRenderer
 {
 public:
-    void renderChart() override
+    void renderChart(QList<QPair<QString, QString>> extractedData, std::shared_ptr<QChartView> chartView) override
     {
         // Реализация отрисовки столбчатой диаграммы
         qDebug() << "Rendering Histogram Chart";
