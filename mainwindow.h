@@ -19,6 +19,9 @@
 #include <QVBoxLayout>
 #include <QFileDialog>
 #include <QList>
+#include <QGraphicsColorizeEffect>
+#include <QPdfWriter>
+#include <QPainter>
 
 class MainWindow : public QMainWindow
 {
@@ -36,13 +39,16 @@ public slots:
     void handleFileSelectionChanged(const QItemSelection&, const QItemSelection&); // Слот для отслеживания изменения выбранного файла
     void changeChartType(const QString&);      // Слот для изменения типа диаграммы
     void printErrorLabel(QString); // Слот для вывода сообщения с ошибкой
+    void updateChartColorMode(bool);
+    void exportChart();
 
 private:
     std::unique_ptr<QPushButton> openFolderButton;       // Кнопка "Открыть папку"
     std::unique_ptr<QLabel> chartTypeLabel;              // Метка "Тип диаграммы"
     std::unique_ptr<QLabel> errorLabel;                  // Метка для отображения ошибок
+    std::shared_ptr<QChartView> chartView;
     std::unique_ptr<QComboBox> chartTypeComboBox;        // Выпадающий список с типами диаграмм
-    std::unique_ptr<QCheckBox> colorfulCheckbox;         // Флажок для выбора цветной диаграммы
+    std::unique_ptr<QCheckBox> BWCheckbox;         // Флажок для выбора цветной диаграммы
     std::unique_ptr<QPushButton> exportButton;           // Кнопка "Экспорт"
     std::unique_ptr<QListView> fileListView;             // Представление файлов в виде дерева
     std::unique_ptr<QWidget> chartViewWidget;               // Виджет для отображения диаграммы

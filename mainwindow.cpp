@@ -20,13 +20,12 @@ MainWindow::MainWindow(QWidget *parent)
     chartTypeComboBox = std::make_unique<QComboBox>(this);
     chartTypeComboBox->addItem("Столбчатая диаграмма");
     chartTypeComboBox->addItem("Круговая диаграмма");
-    chartTypeComboBox->addItem("Линейная диаграмма");
-    chartTypeComboBox->addItem("Гистограмма");
+    chartTypeComboBox->addItem("Горизонтальная столбчатая диаграмма");
     chartTypeComboBox->setStyleSheet("border: 1px solid black; border-radius: 5px; padding: 5px;");
 
     // Создаем флажок для выбора черно-белой диаграммы
-    colorfulCheckbox = std::make_unique<QCheckBox>("Черно-белая диаграмма", this);
-    colorfulCheckbox->setStyleSheet("border: 1px solid black; border-radius: 5px; padding: 5px;");
+    BWCheckbox = std::make_unique<QCheckBox>("Черно-белая диаграмма", this);
+    BWCheckbox->setStyleSheet("border: 1px solid black; border-radius: 5px; padding: 5px;");
 
     // Создаем кнопку "Экспорт"
     exportButton = std::make_unique<QPushButton>("Экспорт", this);
@@ -42,14 +41,13 @@ MainWindow::MainWindow(QWidget *parent)
     chartViewWidget = std::make_unique<QWidget>(this);
     chartViewWidget->setMinimumWidth(100);
     chartViewWidget->resize(674, 0);
-    chartViewWidget->setStyleSheet("border: 1px solid black; border-radius: 5px; padding: 5px;");
 
     // Создаем модель файловой системы для QListView
     fileSystemModel = std::make_unique<QFileSystemModel>(this);
     fileSystemModel->setRootPath(QDir::homePath());
     fileSystemModel = std::make_unique<QFileSystemModel>(this);
 
-    // Создаем разделитель между QListView и QChartView
+    // Создаем разделитель между QListView и QChartViewWidget
     splitter = std::make_unique<QSplitter>(Qt::Horizontal, this);
     splitter->setChildrenCollapsible(false);
     splitter->addWidget(fileListView.get());
@@ -61,7 +59,7 @@ MainWindow::MainWindow(QWidget *parent)
     topLayout->addWidget(openFolderButton.get());
     topLayout->addWidget(chartTypeLabel.get());
     topLayout->addWidget(chartTypeComboBox.get());
-    topLayout->addWidget(colorfulCheckbox.get());
+    topLayout->addWidget(BWCheckbox.get());
     topLayout->addWidget(exportButton.get());
 
     // Создаем QVBoxLayout и добавляем QHBoxLayout и splitter
@@ -86,6 +84,8 @@ MainWindow::MainWindow(QWidget *parent)
    connect(this, SIGNAL(errorMessageReceived(QString)), this, SLOT(printErrorLabel(QString)));
 
    connect(chartTypeComboBox.get(), SIGNAL(currentTextChanged(const QString&)), this, SLOT(changeChartType(const QString&)));
+   connect(BWCheckbox.get(), &QCheckBox::stateChanged, this, &MainWindow::updateChartColorMode);
+   connect(exportButton.get(), &QPushButton::clicked, this, &MainWindow::exportChart);
 }
 
 MainWindow::~MainWindow()
@@ -132,7 +132,7 @@ void MainWindow::openFolder()
 void MainWindow::handleFileSelectionChanged(const QItemSelection &selected, const QItemSelection &deselected)
 {
     Q_UNUSED(deselected);
-
+    fileListView->setModel(fileSystemModel.get());
     QModelIndex index = fileListView->selectionModel()->currentIndex();
     // Получение пути к выбранному файлу
     selectedFilePath = fileSystemModel->filePath(index);
@@ -179,12 +179,6 @@ void MainWindow::handleFileSelectionChanged(const QItemSelection &selected, cons
     if (dataExtractor->checkFile(selectedFilePath))
     {
         extractedData = dataExtractor->extractData(selectedFilePath);
-        // Обработка извлеченных данных
-        qDebug() << "Extracted Data:";
-        for (const QPair<QString, QString>& pair : extractedData) {
-            qDebug() << pair.first << ":" << pair.second;
-        }
-
         // Вызов слота changeChartType с передачей типа диаграммы
         QString selectedChartType = chartTypeComboBox->currentText();
         changeChartType(selectedChartType);
@@ -195,18 +189,11 @@ void MainWindow::handleFileSelectionChanged(const QItemSelection &selected, cons
 
 void MainWindow::changeChartType(const QString& type)
 {
-
-
-    // Реализовать очистку QWidget и создание QChartView, а затем передавать QChartView и
-    // extracted Data в метод renderChart
-
     // Проверяем, был ли выбран файл
     if (selectedFilePath.isEmpty()) {
-    qDebug() << selectedFilePath;
     // Если файл не выбран, не выполняем никаких действий
     return;
     }
-    qDebug() << "На отрисовку";
     // Определение типа диаграммы на основе выбранного значения в combobox
     if (type == "Столбчатая диаграмма") {
     container.RegisterFactory<ChartRenderer, BarChartRenderer>();
@@ -214,32 +201,36 @@ void MainWindow::changeChartType(const QString& type)
     } else if (type == "Круговая диаграмма") {
     container.RegisterFactory<ChartRenderer, PieChartRenderer>();
     chartRenderer = container.GetObject<ChartRenderer>();
-    } else if (type == "Линейная диаграмма") {
-    container.RegisterFactory<ChartRenderer, LineChartRenderer>();
-    chartRenderer = container.GetObject<ChartRenderer>();
-    } else if (type == "Гистограмма") {
-    container.RegisterFactory<ChartRenderer, HistogramChartRenderer>();
+    } else if (type == "Горизонтальная столбчатая диаграмма") {
+    container.RegisterFactory<ChartRenderer, HorizontalBarChartRenderer>();
     chartRenderer = container.GetObject<ChartRenderer>();
     }
 
     if (chartRenderer) {
     // Удаление errorLabel из макета
-    QLayout* layout = chartViewWidget->layout();
-    if (layout) {
-        layout->removeWidget(errorLabel.get());
-    }
 
-    // Удаление errorLabel и освобождение памяти
-    delete errorLabel.release();
+        QLayout* layout = chartViewWidget->layout();
+        if (layout) {
+            layout->removeWidget(errorLabel.get());
+            // Удаление errorLabel и освобождение памяти
+            errorLabel.reset();
+        }
 
-    // Создание и настройка QChartView
-    std::shared_ptr<QChartView> chartView = std::make_shared<QChartView>();
-    chartView->setRenderHint(QPainter::Antialiasing);
-    chartView->chart()->setTitle("График");
+        chartView = std::make_shared<QChartView>(this);
+        // Создаем умный указатель на QVBoxLayout и выделяем память для него
+        // Добавляем errorLabel в макет
+        layout->addWidget(chartView.get());
+        // Устанавливаем макет для chartViewWidget
+        chartViewWidget->setLayout(layout);
 
-    // Добавление chartView в макет
-    layout->addWidget(chartView.get());
-    chartViewWidget->setLayout(layout);
+
+//    // Создание и настройка QChartView
+//    std::shared_ptr<QChartView> chartView = std::make_shared<QChartView>();
+//    chartView->setStyleSheet("background-color: brown;");
+
+//    // Добавление chartView в макет
+//    layout->addWidget(chartView.get());
+//    chartViewWidget->setLayout(layout);
 
     chartRenderer->renderChart(extractedData, chartView);
     } else {
@@ -250,8 +241,7 @@ void MainWindow::changeChartType(const QString& type)
 
 void MainWindow::printErrorLabel(QString text)
 {
-    if (!errorLabel)
-    {
+
     errorLabel = std::make_unique<QLabel>(this);
     errorLabel->setAlignment(Qt::AlignHCenter | Qt::AlignCenter);
     // Создаем умный указатель на QVBoxLayout и выделяем память для него
@@ -260,8 +250,38 @@ void MainWindow::printErrorLabel(QString text)
     layout->addWidget(errorLabel.get());
     // Устанавливаем макет для chartViewWidget
     chartViewWidget->setLayout(layout.release());
-    }
-
     // Обновляем текст errorLabel
     errorLabel->setText(text);
+}
+
+void MainWindow::updateChartColorMode(bool isChecked)
+{
+    if (chartView) {
+    if (isChecked) {
+            QGraphicsColorizeEffect* effect = new QGraphicsColorizeEffect;
+            effect->setColor(Qt::black);
+            chartView->chart()->setGraphicsEffect(effect);
+    } else {
+            // Цветная цветовая схема (по умолчанию)
+            chartView->chart()->setGraphicsEffect(nullptr);
+    }
+    }
+}
+
+
+void MainWindow::exportChart()
+{
+    if (!chartView)
+    return;
+
+    QString filePath = QFileDialog::getSaveFileName(nullptr, "Экспорт диаграммы", "", "PDF (*.pdf)");
+    if (filePath.isEmpty())
+    return;
+
+    QPdfWriter pdfWriter(filePath);
+    QPainter painter(&pdfWriter);
+
+    chartView->render(&painter);
+
+    painter.end();
 }
