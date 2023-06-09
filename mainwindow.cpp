@@ -6,7 +6,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
     // Инициализируем строковую переменную NULL, эта переменная следит, есть ли выбранный файл;
-    selectedFilePath = NULL;
+    selectedFilePath = "";
     // Создаем кнопку "Открыть папку"
     openFolderButton = std::make_unique<QPushButton>("Открыть папку", this);
     openFolderButton->setStyleSheet("border: 1px solid black; border-radius: 5px; padding: 5px;");
@@ -132,11 +132,6 @@ void MainWindow::handleFileSelectionChanged(const QItemSelection &selected, cons
     Q_UNUSED(deselected);
     fileListView->setModel(fileSystemModel.get());
     QModelIndex index = fileListView->selectionModel()->currentIndex();
-    // Получение пути к выбранному файлу
-    selectedFilePath = fileSystemModel->filePath(index);
-
-    // Определение типа файла на основе расширения
-    QString fileExtension = QFileInfo(selectedFilePath).suffix();
 
     // Проверяем, есть ли выбранные элементы в QTreeView
     if (!selected.isEmpty())
