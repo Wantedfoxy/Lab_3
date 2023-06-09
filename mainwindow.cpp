@@ -256,9 +256,11 @@ void MainWindow::updateChartColorMode(bool isChecked)
 {
     if (chartView) {
     if (isChecked) {
-            QGraphicsColorizeEffect* effect = new QGraphicsColorizeEffect;
+            std::unique_ptr<QGraphicsColorizeEffect> effect = std::make_unique<QGraphicsColorizeEffect>();
             effect->setColor(Qt::black);
-            chartView->chart()->setGraphicsEffect(effect);
+            chartView->chart()->setGraphicsEffect(effect.get());
+            // Управление умным указателем передачей владения
+            effect.release();
     } else {
             // Цветная цветовая схема (по умолчанию)
             chartView->chart()->setGraphicsEffect(nullptr);
