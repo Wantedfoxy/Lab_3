@@ -52,7 +52,7 @@ private:
     std::unique_ptr<QPushButton> exportButton;           // Кнопка "Экспорт"
     std::unique_ptr<QListView> fileListView;             // Представление файлов в виде дерева
     std::unique_ptr<QWidget> chartViewWidget;               // Виджет для отображения диаграммы
-    std::unique_ptr<QFileSystemModel> fileSystemModel;   // Модель файловой системы для QListView
+    std::shared_ptr<QFileSystemModel> fileSystemModel;   // Модель файловой системы для QListView
     std::unique_ptr<AbstractDataExtractor> dataExtractor;// Объект, с помощью которого реализуется
                                                          // паттерн стратегия
     QList<QPair<QString, QString>> extractedData;

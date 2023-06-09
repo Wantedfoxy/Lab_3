@@ -43,9 +43,7 @@ MainWindow::MainWindow(QWidget *parent)
     chartViewWidget->resize(674, 0);
 
     // Создаем модель файловой системы для QListView
-    fileSystemModel = std::make_unique<QFileSystemModel>(this);
-    fileSystemModel->setRootPath(QDir::homePath());
-    fileSystemModel = std::make_unique<QFileSystemModel>(this);
+    fileSystemModel = std::make_shared<QFileSystemModel>(this);
 
     // Создаем разделитель между QListView и QChartViewWidget
     splitter = std::make_unique<QSplitter>(Qt::Horizontal, this);
