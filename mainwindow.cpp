@@ -54,6 +54,12 @@ MainWindow::MainWindow(QWidget *parent)
     splitter->setHandleWidth(1);
 
     layout = std::make_unique<QVBoxLayout>();
+    chartView = std::make_shared<QChartView>(this);
+    errorLabel = std::make_unique<QLabel>(this);
+    errorLabel->setAlignment(Qt::AlignHCenter | Qt::AlignCenter);
+    layout->addWidget(errorLabel.get());
+    layout->addWidget(chartView.get());
+    chartViewWidget->setLayout(layout.get());
 
     // Создаем QHBoxLayout и добавляем элементы управления
     std::unique_ptr<QHBoxLayout> topLayout = std::make_unique<QHBoxLayout>();
@@ -205,15 +211,10 @@ void MainWindow::changeChartType(const QString& type)
     }
 
     if (chartRenderer) {
-        if (errorLabel) {
-            // Удаление errorLabel и освобождение памяти
-            errorLabel.reset();
-        }
-
-        chartView = std::make_shared<QChartView>(this);
-        layout->addWidget(chartView.get());
-        chartViewWidget->setLayout(layout.get());
-        // Устанавливаем макет для chartViewWidget
+//        if (errorLabel) {
+//            // Удаление errorLabel и освобождение памяти
+//            errorLabel.reset();
+//        }
 
     chartRenderer->renderChart(extractedData, chartView);
     } else {
@@ -224,16 +225,11 @@ void MainWindow::changeChartType(const QString& type)
 
 void MainWindow::printErrorLabel(QString text)
 {
-    if (chartView)
-    {
-        chartView.reset();
-    }
+//    if (chartView)
+//    {
+//        chartView.reset();
+//    }
 
-    errorLabel = std::make_unique<QLabel>(this);
-    errorLabel->setAlignment(Qt::AlignHCenter | Qt::AlignCenter);
-    layout->addWidget(errorLabel.get());
-    chartViewWidget->setLayout(layout.get());
-    // Обновляем текст errorLabel
     errorLabel->setText(text);
 }
 
