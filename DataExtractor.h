@@ -63,16 +63,36 @@ public:
         QSqlQuery query;
         query.exec("SELECT * FROM " + tableName + " ");
 
-        // Извлекаем данные из результата запроса
+        QMap<QString, QPair<double, int>> groupedData;
+
+        // Группируем данные по дате и вычисляем сумму и количество значений
         while (query.next()) {
-            QString key = query.value(0).toString();
-            QString value = query.value(1).toString();
-            // Добавляем пары ключ-значение в список extractedData
-            extractedData.append(qMakePair(key, value));
+            QString dateTime = query.value(0).toString();
+            QString date = dateTime.split(' ').first();
+            double value = query.value(1).toDouble();
+
+            if (groupedData.contains(date)) {
+                QPair<double, int> pair = groupedData.value(date);
+                double sum = pair.first;
+                int count = pair.second;
+                groupedData[date] = qMakePair(sum + value, count + 1);
+            } else {
+                groupedData[date] = qMakePair(value, 1);
+            }
+        }
+
+        // Вычисляем среднее значение для каждой даты
+        for (const QString& date : groupedData.keys()) {
+            QPair<double, int> pair = groupedData.value(date);
+            double sum = pair.first;
+            int count = pair.second;
+            double average = sum / count;
+            extractedData.append(qMakePair(date, QString::number(average)));
         }
 
         // Закрываем соединение с базой данных
         database.close();
+
         return extractedData;
     }
 };

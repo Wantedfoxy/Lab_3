@@ -56,6 +56,7 @@ private:
     std::unique_ptr<AbstractDataExtractor> dataExtractor;// Объект, с помощью которого реализуется
                                                          // паттерн стратегия
     QList<QPair<QString, QString>> extractedData;
+    std::unique_ptr<QVBoxLayout> layout;
     QString selectedFilePath;
     QItemSelectionModel* ListSelectionModel;             // Модель работы с выбранным файлом
     std::unique_ptr<QSplitter> splitter;                 // Разделитель между QListView и QChartView

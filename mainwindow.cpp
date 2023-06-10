@@ -41,6 +41,7 @@ MainWindow::MainWindow(QWidget *parent)
     chartViewWidget = std::make_unique<QWidget>(this);
     chartViewWidget->setMinimumWidth(100);
     chartViewWidget->resize(674, 0);
+    // Создаем умный указатель на QVBoxLayout и выделяем память для него
 
     // Создаем модель файловой системы для QListView
     fileSystemModel = std::make_shared<QFileSystemModel>(this);
@@ -51,6 +52,8 @@ MainWindow::MainWindow(QWidget *parent)
     splitter->addWidget(fileListView.get());
     splitter->addWidget(chartViewWidget.get());
     splitter->setHandleWidth(1);
+
+    layout = std::make_unique<QVBoxLayout>();
 
     // Создаем QHBoxLayout и добавляем элементы управления
     std::unique_ptr<QHBoxLayout> topLayout = std::make_unique<QHBoxLayout>();
@@ -91,7 +94,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::openFolder()
 {
-   selectedFilePath = NULL;
+   selectedFilePath = "";
    // Открываем диалоговое окно выбора папки
    QString folderPath = QFileDialog::getExistingDirectory(this, "Выберите папку", QDir::homePath());
     // Создание объекта QDir с указанным путем folderPath, который представляет директорию,
@@ -131,7 +134,6 @@ void MainWindow::handleFileSelectionChanged(const QItemSelection &selected, cons
 {
     Q_UNUSED(deselected);
     fileListView->setModel(fileSystemModel.get());
-    QModelIndex index = fileListView->selectionModel()->currentIndex();
 
     // Проверяем, есть ли выбранные элементы в QTreeView
     if (!selected.isEmpty())
@@ -172,9 +174,12 @@ void MainWindow::handleFileSelectionChanged(const QItemSelection &selected, cons
     if (dataExtractor->checkFile(selectedFilePath))
     {
         extractedData = dataExtractor->extractData(selectedFilePath);
+        qDebug() << "Extracted Data:";
+        for (const QPair<QString, QString>& pair : extractedData) {
+            qDebug() << pair.first << ":" << pair.second;
+        }
         // Вызов слота changeChartType с передачей типа диаграммы
-        QString selectedChartType = chartTypeComboBox->currentText();
-        changeChartType(selectedChartType);
+        changeChartType(chartTypeComboBox->currentText());
     } else
         emit errorMessageReceived("Произошла ошибка при проверке файла");
     }
@@ -200,30 +205,15 @@ void MainWindow::changeChartType(const QString& type)
     }
 
     if (chartRenderer) {
-    // Удаление errorLabel из макета
-
-        QLayout* layout = chartViewWidget->layout();
-        if (layout) {
-            layout->removeWidget(errorLabel.get());
+        if (errorLabel) {
             // Удаление errorLabel и освобождение памяти
             errorLabel.reset();
         }
 
         chartView = std::make_shared<QChartView>(this);
-        // Создаем умный указатель на QVBoxLayout и выделяем память для него
-        // Добавляем errorLabel в макет
         layout->addWidget(chartView.get());
+        chartViewWidget->setLayout(layout.get());
         // Устанавливаем макет для chartViewWidget
-        chartViewWidget->setLayout(layout);
-
-
-//    // Создание и настройка QChartView
-//    std::shared_ptr<QChartView> chartView = std::make_shared<QChartView>();
-//    chartView->setStyleSheet("background-color: brown;");
-
-//    // Добавление chartView в макет
-//    layout->addWidget(chartView.get());
-//    chartViewWidget->setLayout(layout);
 
     chartRenderer->renderChart(extractedData, chartView);
     } else {
@@ -234,15 +224,15 @@ void MainWindow::changeChartType(const QString& type)
 
 void MainWindow::printErrorLabel(QString text)
 {
+    if (chartView)
+    {
+        chartView.reset();
+    }
 
     errorLabel = std::make_unique<QLabel>(this);
     errorLabel->setAlignment(Qt::AlignHCenter | Qt::AlignCenter);
-    // Создаем умный указатель на QVBoxLayout и выделяем память для него
-    std::unique_ptr<QVBoxLayout> layout = std::make_unique<QVBoxLayout>();
-    // Добавляем errorLabel в макет
     layout->addWidget(errorLabel.get());
-    // Устанавливаем макет для chartViewWidget
-    chartViewWidget->setLayout(layout.release());
+    chartViewWidget->setLayout(layout.get());
     // Обновляем текст errorLabel
     errorLabel->setText(text);
 }
