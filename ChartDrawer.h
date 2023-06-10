@@ -4,7 +4,6 @@
 #include <QChartView>
 #include <memory>
 #include <string>
-#include <QDebug>
 #include <QPieSeries>
 #include <QPieSlice>
 #include <QBarSeries>
@@ -20,14 +19,14 @@ class ChartRenderer
 {
 public:
     virtual ~ChartRenderer() {}
-    virtual void renderChart(QList<QPair<QString, QString>> extractedData, std::shared_ptr<QChartView> chartView) = 0;
+    virtual void renderChart(QList<QPair<QString, QString>> extractedData, std::unique_ptr<QChartView>& chartView) = 0;
 };
 
 // Конкретный класс для отрисовки круговой диаграммы
 class PieChartRenderer : public ChartRenderer
 {
 public:
-    void renderChart(QList<QPair<QString, QString>> extractedData, std::shared_ptr<QChartView> chartView) override
+    void renderChart(QList<QPair<QString, QString>> extractedData, std::unique_ptr<QChartView>& chartView) override
     {
         chartView->chart()->removeAllSeries();
 
@@ -43,8 +42,6 @@ public:
         chartView->chart()->setAnimationOptions(QChart::SeriesAnimations);
         chartView->setRenderHint(QPainter::Antialiasing);
         chartView->update();
-        // Реализация отрисовки круговой диаграммы
-        qDebug() << "Rendering Pie Chart";
     }
 };
 
@@ -52,7 +49,7 @@ public:
 class BarChartRenderer : public ChartRenderer
 {
 public:
-    void renderChart(QList<QPair<QString, QString>> extractedData, std::shared_ptr<QChartView> chartView) override
+    void renderChart(QList<QPair<QString, QString>> extractedData, std::unique_ptr<QChartView>& chartView) override
     {
         chartView->chart()->removeAllSeries();
 
@@ -72,9 +69,6 @@ public:
         chartView->chart()->setAnimationOptions(QChart::SeriesAnimations);
         chartView->setRenderHint(QPainter::Antialiasing);
         chartView->update();
-
-        // Реализация отрисовки столбчатой диаграммы
-        qDebug() << "Rendering Bar Chart";
     }
 };
 
@@ -82,7 +76,7 @@ public:
 class HorizontalBarChartRenderer : public ChartRenderer
 {
 public:
-    void renderChart(QList<QPair<QString, QString>> extractedData, std::shared_ptr<QChartView> chartView) override
+    void renderChart(QList<QPair<QString, QString>> extractedData, std::unique_ptr<QChartView>& chartView) override
     {
         chartView->chart()->removeAllSeries();
 
@@ -102,9 +96,6 @@ public:
         chartView->chart()->setAnimationOptions(QChart::SeriesAnimations);
         chartView->setRenderHint(QPainter::Antialiasing);
         chartView->update();
-
-        // Реализация отрисовки столбчатой диаграммы
-        qDebug() << "Rendering Horizontal Bar Chart";
     }
 };
 

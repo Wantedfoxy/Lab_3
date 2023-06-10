@@ -14,7 +14,6 @@
 #include <QSplitter>
 #include <QFileSystemModel>
 #include <QChartView>
-#include <QMessageBox>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QFileDialog>
@@ -35,33 +34,40 @@ signals:
     void errorMessageReceived(QString text);
 
 public slots:
-    void openFolder();                        // Слот для открытия папки
-    void handleFileSelectionChanged(const QItemSelection&, const QItemSelection&); // Слот для отслеживания изменения выбранного файла
-    void changeChartType(const QString&);      // Слот для изменения типа диаграммы
-    void printErrorLabel(QString); // Слот для вывода сообщения с ошибкой
+    // Слот для открытия папки
+    void openFolder();
+    // Слот для отслеживания изменения выбранного файла
+    void handleFileSelectionChanged(const QItemSelection&);
+    // Слот для изменения типа диаграммы
+    void changeChartType(const QString&);
+    // Слот для вывода сообщения с ошибкой
+    void printErrorLabel(QString);
+    // Слот для обновления цветовой гаммы (цветная или ч/б диаграмма)
     void updateChartColorMode(bool);
+    // Слот для эксорта данных в pdf
     void exportChart();
 
 private:
     std::unique_ptr<QPushButton> openFolderButton;       // Кнопка "Открыть папку"
     std::unique_ptr<QLabel> chartTypeLabel;              // Метка "Тип диаграммы"
     std::unique_ptr<QLabel> errorLabel;                  // Метка для отображения ошибок
-    std::shared_ptr<QChartView> chartView;
+    std::unique_ptr<QChartView> chartView;
     std::unique_ptr<QComboBox> chartTypeComboBox;        // Выпадающий список с типами диаграмм
-    std::unique_ptr<QCheckBox> BWCheckbox;         // Флажок для выбора цветной диаграммы
+    std::unique_ptr<QCheckBox> BWCheckbox;               // Флажок для выбора цветной диаграммы
     std::unique_ptr<QPushButton> exportButton;           // Кнопка "Экспорт"
     std::unique_ptr<QListView> fileListView;             // Представление файлов в виде дерева
-    std::unique_ptr<QWidget> chartViewWidget;               // Виджет для отображения диаграммы
+    std::unique_ptr<QWidget> chartViewWidget;            // Виджет для отображения диаграммы
     std::shared_ptr<QFileSystemModel> fileSystemModel;   // Модель файловой системы для QListView
+    std::unique_ptr<QVBoxLayout> layout;                 // Обертка для QLabel и QChartView
+    std::unique_ptr<QSplitter> splitter;                // Разделитель между QListView и QChartView
     std::unique_ptr<AbstractDataExtractor> dataExtractor;// Объект, с помощью которого реализуется
                                                          // паттерн стратегия
-    QList<QPair<QString, QString>> extractedData;
-    std::unique_ptr<QVBoxLayout> layout;
-    QString selectedFilePath;
+    std::shared_ptr<ChartRenderer> chartRenderer;        // Используется для отрисовки диаграмм
+    QList<QPair<QString, QString>> extractedData;        // Данные, которые мы получаем из файлов
+    QString selectedFilePath;                            // Путь к выбранному файлу
     QItemSelectionModel* ListSelectionModel;             // Модель работы с выбранным файлом
-    std::unique_ptr<QSplitter> splitter;                 // Разделитель между QListView и QChartView
+    bool isChartRendered;                        // Флаг, указывающий, была ли отрисована диаграмма
     IOCContainer container;                              // Контейнер для выбора типа диаграммы
-    std::shared_ptr<ChartRenderer> chartRenderer;
 };
 
 #endif // MAINWINDOW_H
