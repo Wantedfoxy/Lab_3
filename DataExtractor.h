@@ -94,6 +94,19 @@ public:
             extractedData.append(qMakePair(date, QString::number(average)));
         }
 
+        // Сортируем даты по возрастанию для того, чтобы корректно построить диаграмму
+        std::sort(extractedData.begin(), extractedData.end(), [](const QPair<QString, QString>& pair1, const QPair<QString, QString>& pair2) {
+            QDate date1 = QDate::fromString(pair1.first, "dd.MM.yyyy");
+            QDate date2 = QDate::fromString(pair2.first, "dd.MM.yyyy");
+            return date1 < date2;
+        });
+
+
+        // Выбираем только первые 10 дней
+//        if (extractedData.size() > 10) {
+//            extractedData = extractedData.mid(0, 10);
+//        }
+
         // Закрываем соединение с базой данных
         database.close();
 
