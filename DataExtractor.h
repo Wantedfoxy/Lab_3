@@ -18,7 +18,9 @@ class AbstractDataExtractor
 {
 public:
     virtual ~AbstractDataExtractor() {}
+    // Извлекает данные типа ключ-значение из указанного файла
     virtual QList<QPair<QString, QString>> extractData(const QString& filePath) = 0;
+    // Проверяет, подходит ли указанный файл для извлечения данных
     virtual bool checkFile(const QString &filePath) = 0;
 };
 
@@ -28,23 +30,25 @@ class SqlDataExtractor : public AbstractDataExtractor
 public:
     bool checkFile(const QString& filePath)
     {
+        // Проверяем, существует ли файл
+        if (!QFile::exists(filePath)) {
+            return false;
+        }
+
         QSqlDatabase database = QSqlDatabase::addDatabase("QSQLITE");
         // Устанавливаем путь, по которому будем подключаться к базе данных
         database.setDatabaseName(filePath);
-        // Пробуем открыть
+
+        // Пробуем открыть базу данных
         if (!database.open()) {
             return false;
         }
 
-        // Проверка на пустоту
+        // Проверяем, есть ли таблицы в базе данных
         QStringList tables = database.tables();
-        if (tables.isEmpty()) {
-            database.close();
-            return false;
-        }
-        // Закрытия подключения к базе данных
         database.close();
-        return true;
+
+        return !tables.isEmpty();
     };
 
     QList<QPair<QString, QString>> extractData(const QString& filePath)
@@ -103,36 +107,33 @@ class JsonDataExtractor : public AbstractDataExtractor
 public:
     bool checkFile(const QString& filePath)
     {
+
         QFile file(filePath);
         // Проверяем, существует ли файл и может ли он быть открыт для чтения
         if (!file.exists() || !file.open(QIODevice::ReadOnly)) {
             return false;
         }
 
-        // Читаем содержимое файла в QByteArray
-        QByteArray jsonData = file.readAll();
+        // Читаем только необходимый минимум данных, чтобы проверить файл на валидность
+        QByteArray jsonData = file.read(1024);
         file.close();
-        // Создаем объект QJsonDocument из полученных данных
-        QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonData);
 
-        // Проверяем, является ли jsonDoc пустым или не объектом
-        if (jsonDoc.isNull() || !jsonDoc.isObject()) {
+        QJsonParseError jsonError;
+        // Пытаемся распарсить JSON
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonData, &jsonError);
+
+        if (jsonError.error != QJsonParseError::NoError) {
             return false;
         }
+
         // Получаем объект QJsonObject из jsonDoc
         QJsonObject jsonObj = jsonDoc.object();
-        // Проверяем, содержит ли jsonObj ключ "data"
-        if (!jsonObj.contains("data")) {
-            return false;
-        }
-        // Получаем значение ключа "data" из jsonObj
-        QJsonValue dataValue = jsonObj.value("data");
-        // Проверяем, является ли dataValue массивом
-        if (!dataValue.isArray()) {
+
+        // Проверяем наличие ключа "data" и его типа
+        if (!jsonObj.contains("data") || !jsonObj.value("data").isArray()) {
             return false;
         }
 
-        file.close();
         return true;
     };
 
@@ -192,20 +193,13 @@ public:
         QTextStream in(&file);
         // Считываем первую строку файла, содержащую заголовки столбцов
         QString headerLine = in.readLine();
+        file.close();
+
         // Разбиваем строку на отдельные заголовки с помощью разделителя ','
         QStringList headers = headerLine.split(',');
-        // Находим индекс столбца "Key" в списке заголовков
-        int keyIndex = headers.indexOf("Key");
-        // Находим индекс столбца "Value" в списке заголовков
-        int valueIndex = headers.indexOf("Value");
-        // Если не удалось найти индекс одного из столбцов
-        if (keyIndex == -1 || valueIndex == -1) {
-            // Закрываем файл и возвращаем false
-            file.close();
-            return false;
-        }
 
-        return true;
+        // Проверяем наличие требуемых заголовков
+        return (headers.contains("Key") && headers.contains("Value"));
     };
 
     QList<QPair<QString, QString>> extractData(const QString& filePath)

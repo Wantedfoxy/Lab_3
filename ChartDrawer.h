@@ -19,6 +19,13 @@ class ChartRenderer
 {
 public:
     virtual ~ChartRenderer() {}
+
+    /**
+     * renderChart - Метод для отрисовки диаграммы
+     * extractedData - Извлеченные данные для отрисовки
+     * chartView - Указатель на объект QChartView, в котором будет отрисована диаграмма
+     */
+
     virtual void renderChart(QList<QPair<QString, QString>> extractedData, std::unique_ptr<QChartView>& chartView) = 0;
 };
 
@@ -31,13 +38,13 @@ public:
         chartView->chart()->removeAllSeries();
 
         std::unique_ptr<QPieSeries> series = std::make_unique<QPieSeries>();
-        // Как быть с SQL файлами? Просто делать группировку по датам?
         for (const QPair<QString, QString>& pair : extractedData) {
             QString time = pair.first;
             qreal value = pair.second.toDouble();
             series->append(time, value);
         }
-        chartView->chart()->addSeries(series.release()); // Освобождаем владение указателем перед добавлением серии
+        // Освобождаем владение указателем перед добавлением серии
+        chartView->chart()->addSeries(series.release());
         chartView->chart()->setTitle("Круговая диаграмма");
         chartView->chart()->setAnimationOptions(QChart::SeriesAnimations);
         chartView->setRenderHint(QPainter::Antialiasing);
@@ -52,9 +59,7 @@ public:
     void renderChart(QList<QPair<QString, QString>> extractedData, std::unique_ptr<QChartView>& chartView) override
     {
         chartView->chart()->removeAllSeries();
-
         std::unique_ptr<QBarSeries> series(new QBarSeries());
-
         for (const QPair<QString, QString>& pair : extractedData) {
             QString time = pair.first;
             qreal value = pair.second.toDouble();
@@ -63,7 +68,7 @@ public:
             *barSet << value;
             series->append(barSet.release());
         }
-
+        // Освобождаем владение указателем перед добавлением серии
         chartView->chart()->addSeries(series.release());
         chartView->chart()->setTitle("Столбчатая диаграмма");
         chartView->chart()->setAnimationOptions(QChart::SeriesAnimations);
@@ -72,16 +77,14 @@ public:
     }
 };
 
-// Конкретный класс для отрисовки линейной диаграммы
+// Конкретный класс для отрисовки столбчатой горизонтальной диаграммы
 class HorizontalBarChartRenderer : public ChartRenderer
 {
 public:
     void renderChart(QList<QPair<QString, QString>> extractedData, std::unique_ptr<QChartView>& chartView) override
     {
         chartView->chart()->removeAllSeries();
-
         std::unique_ptr<QHorizontalBarSeries> series(new QHorizontalBarSeries());
-
         for (const QPair<QString, QString>& pair : extractedData) {
             QString time = pair.first;
             qreal value = pair.second.toDouble();
@@ -90,7 +93,7 @@ public:
             *barSet << value;
             series->append(barSet.release());
         }
-
+        // Освобождаем владение указателем перед добавлением серии
         chartView->chart()->addSeries(series.release());
         chartView->chart()->setTitle("Столбчатая горизонтальная диаграмма");
         chartView->chart()->setAnimationOptions(QChart::SeriesAnimations);
