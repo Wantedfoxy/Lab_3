@@ -40,5 +40,6 @@ Chart generator
 <h2>Диаграмма классов</h2>
 
 
-![Lab3](https://github.com/Wantedfoxy/Lab_3/assets/50704060/b0cb8e27-3a80-472c-9894-3fdfca419b89)
+![Lab3 (1)](https://github.com/Wantedfoxy/Lab_3/assets/50704060/b31ce8b3-21d1-4f69-ac75-69627522f267)
+
 
