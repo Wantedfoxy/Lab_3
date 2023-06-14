@@ -33,7 +33,7 @@ public:
      * и реализацию, которая фиксирует функтор для последующего вызова.
      * Для краткости я использовал std::map для хранения фабрик, однако
      * вы можете рассмотреть и другие варианты для повышения эффективности.
-     */
+    */
 
     class FactoryRoot
     {
@@ -45,6 +45,13 @@ public:
     std::map<int, std::shared_ptr<FactoryRoot>> m_factories;
 
     //Получить экземпляр объекта
+
+    /*
+     * Класс CFactory<T> представляет фабрику для типа T.
+     * Он хранит функтор m_functor, который может создавать экземпляры объектов типа T.
+     * Метод GetObject() вызывает функтор и возвращает созданный объект.
+    */
+
     template<typename T>
     class CFactory : public FactoryRoot
     {
@@ -72,7 +79,12 @@ public:
 
     //Регистрация экземпляров
 
-    //Самая простая реализация - зарегистрировать функтор
+    /*
+     * Метод RegisterFunctor() регистрирует функтор для создания объекта типа TInterface.
+     * Функтор принимает параметры TS... и возвращает std::shared_ptr<TInterface>.
+     * Создается экземпляр CFactory<TInterface>, который использует переданный функтор для создания объекта.
+    */
+
     template<typename TInterface, typename... TS>
     void RegisterFunctor(
         std::function<std::shared_ptr<TInterface>(std::shared_ptr<TS>... ts)> functor) {
@@ -81,6 +93,12 @@ public:
     }
 
     //Регистрация одного экземпляра объекта
+
+    /*
+     * Метод RegisterInstance() регистрирует существующий экземпляр объекта типа TInterface в контейнере.
+     * Создается экземпляр CFactory<TInterface>, который всегда возвращает переданный экземпляр объекта.
+    */
+
     template<typename TInterface>
     void RegisterInstance(std::shared_ptr<TInterface> t) {
         m_factories[GetTypeID<TInterface>()] = std::make_shared<CFactory<TInterface>>(
@@ -88,6 +106,12 @@ public:
     }
 
     //Подаем указатель на функцию
+
+    /*
+     * Метод RegisterFunctor() регистрирует функцию, возвращающую std::shared_ptr<TInterface>,
+     * как функтор для создания объекта типа TInterface.
+    */
+
     template<typename TInterface, typename... TS>
     void RegisterFunctor(std::shared_ptr<TInterface> (*functor)(std::shared_ptr<TS>... ts)) {
         RegisterFunctor(
@@ -95,6 +119,12 @@ public:
     }
 
     //Фабрика, которая будет вызывать конструктор, для каждого экземпляра
+
+    /*
+     * Метод RegisterFactory() регистрирует фабрику, которая будет вызывать конструктор объекта типа TConcrete.
+     * Фабрика принимает параметры TArguments... и создает объект типа TConcrete с помощью std::make_shared<TConcrete>().
+    */
+
     template<typename TInterface, typename TConcrete, typename... TArguments>
     void RegisterFactory() {
         RegisterFunctor(
@@ -106,6 +136,14 @@ public:
     }
 
     //Фабрика, которая будет возвращать один экземпляр
+
+    /*
+     * Метод RegisterInstance() регистрирует существующий экземпляр объекта типа TConcrete,
+     * созданный с помощью std::make_shared<TConcrete>(GetObject<TArguments>()...),
+     * как фабрику для типа TInterface.
+     * Этот метод используется для регистрации единственного экземпляра объекта.
+    */
+
     template<typename TInterface, typename TConcrete, typename... TArguments>
     void RegisterInstance() {
         RegisterInstance<TInterface>(std::make_shared<TConcrete>(GetObject<TArguments>()...));

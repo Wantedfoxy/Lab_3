@@ -18,7 +18,9 @@ class AbstractDataExtractor
 {
 public:
     virtual ~AbstractDataExtractor() {}
+    // Извлекает данные типа ключ-значение из указанного файла
     virtual QList<QPair<QString, QString>> extractData(const QString& filePath) = 0;
+    // Проверяет, подходит ли указанный файл для извлечения данных
     virtual bool checkFile(const QString &filePath) = 0;
 };
 
@@ -28,23 +30,25 @@ class SqlDataExtractor : public AbstractDataExtractor
 public:
     bool checkFile(const QString& filePath)
     {
+        // Проверяем, существует ли файл
+        if (!QFile::exists(filePath)) {
+            return false;
+        }
+
         QSqlDatabase database = QSqlDatabase::addDatabase("QSQLITE");
         // Устанавливаем путь, по которому будем подключаться к базе данных
         database.setDatabaseName(filePath);
-        // Пробуем открыть
+
+        // Пробуем открыть базу данных
         if (!database.open()) {
             return false;
         }
 
-        // Проверка на пустоту
+        // Проверяем, есть ли таблицы в базе данных
         QStringList tables = database.tables();
-        if (tables.isEmpty()) {
-            database.close();
-            return false;
-        }
-        // Закрытия подключения к базе данных
         database.close();
-        return true;
+
+        return !tables.isEmpty();
     };
 
     QList<QPair<QString, QString>> extractData(const QString& filePath)
@@ -63,16 +67,49 @@ public:
         QSqlQuery query;
         query.exec("SELECT * FROM " + tableName + " ");
 
-        // Извлекаем данные из результата запроса
+        QMap<QString, QPair<double, int>> groupedData;
+
+        // Группируем данные по дате и вычисляем сумму и количество значений
         while (query.next()) {
-            QString key = query.value(0).toString();
-            QString value = query.value(1).toString();
-            // Добавляем пары ключ-значение в список extractedData
-            extractedData.append(qMakePair(key, value));
+            QString dateTime = query.value(0).toString();
+            QString date = dateTime.split(' ').first();
+            double value = query.value(1).toDouble();
+
+            if (groupedData.contains(date)) {
+                QPair<double, int> pair = groupedData.value(date);
+                double sum = pair.first;
+                int count = pair.second;
+                groupedData[date] = qMakePair(sum + value, count + 1);
+            } else {
+                groupedData[date] = qMakePair(value, 1);
+            }
         }
+
+        // Вычисляем среднее значение для каждой даты
+        for (const QString& date : groupedData.keys()) {
+            QPair<double, int> pair = groupedData.value(date);
+            double sum = pair.first;
+            int count = pair.second;
+            double average = sum / count;
+            extractedData.append(qMakePair(date, QString::number(average)));
+        }
+
+        // Сортируем даты по возрастанию для того, чтобы корректно построить диаграмму
+        std::sort(extractedData.begin(), extractedData.end(), [](const QPair<QString, QString>& pair1, const QPair<QString, QString>& pair2) {
+            QDate date1 = QDate::fromString(pair1.first, "dd.MM.yyyy");
+            QDate date2 = QDate::fromString(pair2.first, "dd.MM.yyyy");
+            return date1 < date2;
+        });
+
+
+        // Выбираем только первые 10 дней
+//        if (extractedData.size() > 10) {
+//            extractedData = extractedData.mid(0, 10);
+//        }
 
         // Закрываем соединение с базой данных
         database.close();
+
         return extractedData;
     }
 };
@@ -83,36 +120,33 @@ class JsonDataExtractor : public AbstractDataExtractor
 public:
     bool checkFile(const QString& filePath)
     {
+
         QFile file(filePath);
         // Проверяем, существует ли файл и может ли он быть открыт для чтения
         if (!file.exists() || !file.open(QIODevice::ReadOnly)) {
             return false;
         }
 
-        // Читаем содержимое файла в QByteArray
-        QByteArray jsonData = file.readAll();
+        // Читаем только необходимый минимум данных, чтобы проверить файл на валидность
+        QByteArray jsonData = file.read(1024);
         file.close();
-        // Создаем объект QJsonDocument из полученных данных
-        QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonData);
 
-        // Проверяем, является ли jsonDoc пустым или не объектом
-        if (jsonDoc.isNull() || !jsonDoc.isObject()) {
+        QJsonParseError jsonError;
+        // Пытаемся распарсить JSON
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonData, &jsonError);
+
+        if (jsonError.error != QJsonParseError::NoError) {
             return false;
         }
+
         // Получаем объект QJsonObject из jsonDoc
         QJsonObject jsonObj = jsonDoc.object();
-        // Проверяем, содержит ли jsonObj ключ "data"
-        if (!jsonObj.contains("data")) {
-            return false;
-        }
-        // Получаем значение ключа "data" из jsonObj
-        QJsonValue dataValue = jsonObj.value("data");
-        // Проверяем, является ли dataValue массивом
-        if (!dataValue.isArray()) {
+
+        // Проверяем наличие ключа "data" и его типа
+        if (!jsonObj.contains("data") || !jsonObj.value("data").isArray()) {
             return false;
         }
 
-        file.close();
         return true;
     };
 
@@ -172,20 +206,13 @@ public:
         QTextStream in(&file);
         // Считываем первую строку файла, содержащую заголовки столбцов
         QString headerLine = in.readLine();
+        file.close();
+
         // Разбиваем строку на отдельные заголовки с помощью разделителя ','
         QStringList headers = headerLine.split(',');
-        // Находим индекс столбца "Key" в списке заголовков
-        int keyIndex = headers.indexOf("Key");
-        // Находим индекс столбца "Value" в списке заголовков
-        int valueIndex = headers.indexOf("Value");
-        // Если не удалось найти индекс одного из столбцов
-        if (keyIndex == -1 || valueIndex == -1) {
-            // Закрываем файл и возвращаем false
-            file.close();
-            return false;
-        }
 
-        return true;
+        // Проверяем наличие требуемых заголовков
+        return (headers.contains("Key") && headers.contains("Value"));
     };
 
     QList<QPair<QString, QString>> extractData(const QString& filePath)

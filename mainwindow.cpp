@@ -5,7 +5,7 @@ int IOCContainer::s_nextTypeId = 1;
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    // Инициализируем строковую переменную NULL, эта переменная следит, есть ли выбранный файл;
+    // Инициализируем пустую строковую переменную, эта переменная следит, есть ли выбранный файл;
     selectedFilePath = "";
     // Создаем кнопку "Открыть папку"
     openFolderButton = std::make_unique<QPushButton>("Открыть папку", this);
@@ -37,7 +37,8 @@ MainWindow::MainWindow(QWidget *parent)
     fileListView->resize(350,0);
     fileListView->setStyleSheet("border: 1px solid black; border-radius: 5px; padding: 5px;");
 
-    // Создаем виджет для отображения диаграммы
+    // Создаем виджет, в который вложится QVBoxLayout, уже в который будут вкладываться отображение
+    // диаграмм и QLabel для отображения сообщений пользователю
     chartViewWidget = std::make_unique<QWidget>(this);
     chartViewWidget->setMinimumWidth(100);
     chartViewWidget->resize(674, 0);
@@ -51,6 +52,16 @@ MainWindow::MainWindow(QWidget *parent)
     splitter->addWidget(fileListView.get());
     splitter->addWidget(chartViewWidget.get());
     splitter->setHandleWidth(1);
+
+    // Создаем laiout, в котором будут отображаться QChartView и QLabel(для сообщений пользователю)
+    layout = std::make_unique<QVBoxLayout>();
+    chartView = std::make_unique<QChartView>(this);
+    errorLabel = std::make_unique<QLabel>(this);
+    errorLabel->setAlignment(Qt::AlignHCenter | Qt::AlignCenter);
+    errorLabel->setVisible(false);
+    layout->addWidget(errorLabel.get());
+    layout->addWidget(chartView.get());
+    chartViewWidget->setLayout(layout.get());
 
     // Создаем QHBoxLayout и добавляем элементы управления
     std::unique_ptr<QHBoxLayout> topLayout = std::make_unique<QHBoxLayout>();
@@ -69,6 +80,8 @@ MainWindow::MainWindow(QWidget *parent)
     std::unique_ptr<QWidget> centralWidget = std::make_unique<QWidget>(this);
     centralWidget->setLayout(mainLayout.release());
     setCentralWidget(centralWidget.release());
+    // Сбрасываем флаг, так как диаграмма не была отрисована
+    isChartRendered = false;
 
     // Задаем минимальный размер окна
     setMinimumSize(800, 600);
@@ -76,14 +89,20 @@ MainWindow::MainWindow(QWidget *parent)
     resize(1024, 768);
 
 
-   // Устанавливаем соединение между сигналом clicked кнопки openFolderButton и слотом openFolder()
-   connect(openFolderButton.get(), &QPushButton::clicked, this, &MainWindow::openFolder);
-
-   connect(this, SIGNAL(errorMessageReceived(QString)), this, SLOT(printErrorLabel(QString)));
-
-   connect(chartTypeComboBox.get(), SIGNAL(currentTextChanged(const QString&)), this, SLOT(changeChartType(const QString&)));
-   connect(BWCheckbox.get(), &QCheckBox::stateChanged, this, &MainWindow::updateChartColorMode);
-   connect(exportButton.get(), &QPushButton::clicked, this, &MainWindow::exportChart);
+    // Устанавливаем соединение между сигналом clicked кнопки openFolderButton и слотом openFolder()
+    connect(openFolderButton.get(), &QPushButton::clicked, this, &MainWindow::openFolder);
+    // Устанавливаем соединение между сигналом получения ошибки и слотом, отвечающим за вывод этого
+    // сообщения пользователю
+    connect(this, SIGNAL(errorMessageReceived(QString)), this, SLOT(printErrorLabel(QString)));
+    // Устанавливаем соединение между сигналом смены выбранного типа диаграммы и вызываем слот,
+    // который отобразит выбранный тип
+    connect(chartTypeComboBox.get(), SIGNAL(currentTextChanged(const QString&)), this,
+            SLOT(changeChartType(const QString&)));
+    // Устанавливаем соединение между сигналом отвечающим за цвета диаграммы и вызываем слот,
+    // который задась диаграмме либо цветное отображение, либо черно-белое
+    connect(BWCheckbox.get(), &QCheckBox::stateChanged, this, &MainWindow::updateChartColorMode);
+    // станавливаем соединение между сигналом clicked кнопки exportButton и слотом exportChart()
+    connect(exportButton.get(), &QPushButton::clicked, this, &MainWindow::exportChart);
 }
 
 MainWindow::~MainWindow()
@@ -91,16 +110,15 @@ MainWindow::~MainWindow()
 
 void MainWindow::openFolder()
 {
-   selectedFilePath = NULL;
-   // Открываем диалоговое окно выбора папки
-   QString folderPath = QFileDialog::getExistingDirectory(this, "Выберите папку", QDir::homePath());
-    // Создание объекта QDir с указанным путем folderPath, который представляет директорию,
-   // указанную в folderPath. Этот объект будет использоваться для выполнения операций с файлами
-   // внутри указанной директории.
-   QDir folderDir(folderPath);
-   if (folderDir.exists()) {
+    // Открываем диалоговое окно выбора папки
+    QString folderPath = QFileDialog::getExistingDirectory(this, "Выберите папку", QDir::homePath());
+    // Создаем объект QDir с указанным путем folderPath, который представляет директорию,
+    // указанную в folderPath, этот объект будет использоваться для выполнения операций с файлами
+    // внутри указанной директории
+    QDir folderDir(folderPath);
+    if (folderDir.exists()) {
         if (!folderDir.isEmpty()) {
-           // Установка фильтра на файлы и установка выбранной папки как корневого пути
+            // Установка фильтра на файлы и установка выбранной папки как корневого пути
             fileSystemModel->setFilter(QDir::NoDotAndDotDot | QDir::Files);
             fileSystemModel->setRootPath(folderPath);
 
@@ -110,29 +128,30 @@ void MainWindow::openFolder()
             fileSystemModel->setNameFilters(nameFilters);
             fileSystemModel->setNameFilterDisables(false);
 
-            // Установка модели данных для QListView и устанавливаем корневой индекс на выбранную
-            // папку
+            // Устанавливаем модель данных для QListView
             fileListView->setModel(fileSystemModel.get());
+            // Устанавливаем корневой индекс на выбранную папку
             fileListView->setRootIndex(fileSystemModel->index(folderPath));
 
-            // Создаем QItemSelectionModel и соединяем его сигнал со слотом handleFileSelectionChanged
+            // Создаем переменную, которая отвечает за выделенный файл в QListView
             ListSelectionModel = fileListView->selectionModel();
-            connect(ListSelectionModel, &QItemSelectionModel::selectionChanged, this, &MainWindow::handleFileSelectionChanged);
+            // Cоединяем сигнал со слотом handleFileSelectionChanged, таким образом, при изменении
+            // выделения элементов в списке, сигнал selectionChanged будет генерироваться объектом
+            // ЦQItemSelectionModel и вызывать метод, который обработает файл
+            connect(ListSelectionModel, &QItemSelectionModel::selectionChanged, this,
+                    &MainWindow::handleFileSelectionChanged);
         } else {
             // Если указанная папка пуста, отображаем предупреждение
             emit errorMessageReceived("Указанная папка пуста");
         }
     } else {
+        // Если указанная папка не существует, отображаем предупреждение
         emit errorMessageReceived("Указанная папка не существует");
     }
 }
 
-void MainWindow::handleFileSelectionChanged(const QItemSelection &selected, const QItemSelection &deselected)
+void MainWindow::handleFileSelectionChanged(const QItemSelection &selected)
 {
-    Q_UNUSED(deselected);
-    fileListView->setModel(fileSystemModel.get());
-    QModelIndex index = fileListView->selectionModel()->currentIndex();
-
     // Проверяем, есть ли выбранные элементы в QTreeView
     if (!selected.isEmpty())
     {
@@ -145,38 +164,39 @@ void MainWindow::handleFileSelectionChanged(const QItemSelection &selected, cons
         // Проверяем тип файла и выполняем соответствующую обработку
         QFileInfo fileInfo(selectedFilePath);
         QString fileExtension = fileInfo.suffix();
-
-    // Создание соответствующего экземпляра DataExtractor в зависимости от типа файла
-    if (fileExtension == "sqlite")
-    {
-        dataExtractor = std::make_unique<SqlDataExtractor>();
+        // Создание соответствующего экземпляра DataExtractor в зависимости от типа файла
+        if (fileExtension == "sqlite")
+        {
+            dataExtractor = std::make_unique<SqlDataExtractor>();
             emit errorMessageReceived("Выбран SQL-файл: " + selectedFilePath);
-    }
-    else if (fileExtension == "json")
-    {
-        dataExtractor = std::make_unique<JsonDataExtractor>();
-        emit errorMessageReceived("Выбран JSON-файл: " + selectedFilePath);
-    }
-    else if (fileExtension == "csv")
-    {
-        dataExtractor = std::make_unique<CsvDataExtractor>();
-        emit errorMessageReceived("Выбран CSV-файл: " + selectedFilePath);
-    }
-    else
-    {
-        dataExtractor = nullptr; // Если тип файла неизвестен или не поддерживается
-        emit errorMessageReceived("Неподдерживаемый тип файла");
-    }
+        }
+        else if (fileExtension == "json")
+        {
+            dataExtractor = std::make_unique<JsonDataExtractor>();
+            emit errorMessageReceived("Выбран JSON-файл: " + selectedFilePath);
+        }
+        else if (fileExtension == "csv")
+        {
+            dataExtractor = std::make_unique<CsvDataExtractor>();
+            emit errorMessageReceived("Выбран CSV-файл: " + selectedFilePath);
+        }
+        else
+        {
+            dataExtractor = nullptr; // Если тип файла неизвестен или не поддерживается
+            emit errorMessageReceived("Неподдерживаемый тип файла");
+        }
 
-    // Извлечение данных с использованием DataExtractor
-    if (dataExtractor->checkFile(selectedFilePath))
-    {
-        extractedData = dataExtractor->extractData(selectedFilePath);
-        // Вызов слота changeChartType с передачей типа диаграммы
-        QString selectedChartType = chartTypeComboBox->currentText();
-        changeChartType(selectedChartType);
-    } else
-        emit errorMessageReceived("Произошла ошибка при проверке файла");
+        // Если файл прошел проверку
+        if (dataExtractor->checkFile(selectedFilePath))
+        {
+            // Вытаскиваем данные из файла (в случае SQL дополнительно группируем по дате)
+            extractedData = dataExtractor->extractData(selectedFilePath);
+            // Вызываем слот changeChartType с передачей в него типа диаграммы
+            // Это делается для мгновенной отрисовки диаграммы выбранного типа при выборе файла
+            changeChartType(chartTypeComboBox->currentText());
+        } else
+            // Выводим сообщение об ошибке при проверке файла
+            emit errorMessageReceived("Произошла ошибка при проверке файла");
     }
 }
 
@@ -184,99 +204,92 @@ void MainWindow::changeChartType(const QString& type)
 {
     // Проверяем, был ли выбран файл
     if (selectedFilePath.isEmpty()) {
-    // Если файл не выбран, не выполняем никаких действий
-    return;
+        // Если файл не выбран, не выполняем никаких действий
+        return;
     }
-    // Определение типа диаграммы на основе выбранного значения в combobox
+    // Определяем тип диаграммы на основе выбранного значения в ComboBox
     if (type == "Столбчатая диаграмма") {
-    container.RegisterFactory<ChartRenderer, BarChartRenderer>();
-    chartRenderer = container.GetObject<ChartRenderer>();
+        container.RegisterFactory<ChartRenderer, BarChartRenderer>();
+        chartRenderer = container.GetObject<ChartRenderer>();
     } else if (type == "Круговая диаграмма") {
-    container.RegisterFactory<ChartRenderer, PieChartRenderer>();
-    chartRenderer = container.GetObject<ChartRenderer>();
+        container.RegisterFactory<ChartRenderer, PieChartRenderer>();
+        chartRenderer = container.GetObject<ChartRenderer>();
     } else if (type == "Горизонтальная столбчатая диаграмма") {
-    container.RegisterFactory<ChartRenderer, HorizontalBarChartRenderer>();
-    chartRenderer = container.GetObject<ChartRenderer>();
+        container.RegisterFactory<ChartRenderer, HorizontalBarChartRenderer>();
+        chartRenderer = container.GetObject<ChartRenderer>();
     }
 
     if (chartRenderer) {
-    // Удаление errorLabel из макета
-
-        QLayout* layout = chartViewWidget->layout();
-        if (layout) {
-            layout->removeWidget(errorLabel.get());
-            // Удаление errorLabel и освобождение памяти
-            errorLabel.reset();
+        if (errorLabel) {
+            // Скрываем errorLabel
+            errorLabel->setVisible(false);
         }
-
-        chartView = std::make_shared<QChartView>(this);
-        // Создаем умный указатель на QVBoxLayout и выделяем память для него
-        // Добавляем errorLabel в макет
-        layout->addWidget(chartView.get());
-        // Устанавливаем макет для chartViewWidget
-        chartViewWidget->setLayout(layout);
-
-
-//    // Создание и настройка QChartView
-//    std::shared_ptr<QChartView> chartView = std::make_shared<QChartView>();
-//    chartView->setStyleSheet("background-color: brown;");
-
-//    // Добавление chartView в макет
-//    layout->addWidget(chartView.get());
-//    chartViewWidget->setLayout(layout);
-
-    chartRenderer->renderChart(extractedData, chartView);
+        // Показываем chartView
+        chartView->setVisible(true);
+        // Отрисовка диаграммы
+        chartRenderer->renderChart(extractedData, chartView);
+        // Устанавливаем флаг, что диаграмма была отрисована
+        isChartRendered = true;
     } else {
-    // Обработка ошибки: не удалось получить объект ChartRenderer из контейнера
-    emit errorMessageReceived("Ошибка: невозможно создать объект диаграммы");
+        // Обработка ошибки: не удалось получить объект ChartRenderer из контейнера
+        emit errorMessageReceived("Ошибка: невозможно создать объект диаграммы");
+        // Сбрасываем флаг, так как диаграмма не была отрисована
+        isChartRendered = false;
+        if (chartView) {
+            // Скрываем chartView
+            chartView->setVisible(false);
+        }
+        // Показываем errorLabel
+        errorLabel->setVisible(true);
     }
 }
 
 void MainWindow::printErrorLabel(QString text)
 {
-
-    errorLabel = std::make_unique<QLabel>(this);
-    errorLabel->setAlignment(Qt::AlignHCenter | Qt::AlignCenter);
-    // Создаем умный указатель на QVBoxLayout и выделяем память для него
-    std::unique_ptr<QVBoxLayout> layout = std::make_unique<QVBoxLayout>();
-    // Добавляем errorLabel в макет
-    layout->addWidget(errorLabel.get());
-    // Устанавливаем макет для chartViewWidget
-    chartViewWidget->setLayout(layout.release());
-    // Обновляем текст errorLabel
+    if (chartView) {
+        // Скрываем chartView
+        chartView->setVisible(false);
+    }
     errorLabel->setText(text);
 }
 
 void MainWindow::updateChartColorMode(bool isChecked)
 {
     if (chartView) {
-    if (isChecked) {
+        if (isChecked) {
             std::unique_ptr<QGraphicsColorizeEffect> effect = std::make_unique<QGraphicsColorizeEffect>();
+            // Устанавливаем цвет эффекта в черный
             effect->setColor(Qt::black);
+            // Устанавливаем эффект цветовой схемы на диаграмму, используя get() для получения
+            // обычного указателя на объект, а не умного указателя
             chartView->chart()->setGraphicsEffect(effect.get());
             // Управление умным указателем передачей владения
             effect.release();
-    } else {
-            // Цветная цветовая схема (по умолчанию)
+        } else {
+            // Если флаг isChecked равен false, то сбрасываем цветовую схему диаграммы,
+            // устанавливая эффект в nullptr
             chartView->chart()->setGraphicsEffect(nullptr);
-    }
+        }
     }
 }
 
 
 void MainWindow::exportChart()
 {
-    if (!chartView)
-    return;
-
+    // Проверяем, существует ли объект chartView, чтобы избежать обращения к нулевому указателю
+    if (!chartView || !isChartRendered)
+        return;
+    // Получаем путь к файлу PDF с помощью диалогового окна сохранения файла
     QString filePath = QFileDialog::getSaveFileName(nullptr, "Экспорт диаграммы", "", "PDF (*.pdf)");
+    // Если путь к файлу пустой (например, пользователь отменил сохранение), то прерываем выполнение метода
     if (filePath.isEmpty())
-    return;
-
+        return;
+    // Создаем объект QPdfWriter для записи в файл PDF с использованием указанного пути filePath
     QPdfWriter pdfWriter(filePath);
+    // Создаем объект QPainter, связанный с pdfWriter, для рисования на PDF-поверхности
     QPainter painter(&pdfWriter);
-
+    // Рендерим содержимое chartView на поверхность, связанную с painter
     chartView->render(&painter);
-
+    // Завершаем рисование
     painter.end();
 }
